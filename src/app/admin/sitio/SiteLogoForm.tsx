@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { withBasePathIfNeeded } from "@/lib/base-path";
 import { saveSiteLogoBrandingAction } from "./actions";
 
 type Props = {
@@ -19,7 +20,7 @@ function PreviewImage({ src, alt }: { src: string; alt: string }) {
 
   return (
     // eslint-disable-next-line @next/next/no-img-element -- rutas /api/ y http(s)
-    <img src={src} alt={alt} className={className} />
+    <img src={withBasePathIfNeeded(src)} alt={alt} className={className} />
   );
 }
 

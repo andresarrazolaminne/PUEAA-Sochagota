@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { withBasePath } from "@/lib/base-path";
 
 const MAX_BYTES = 3 * 1024 * 1024;
 
@@ -26,7 +27,7 @@ export function getCarnetUploadDir(): string {
 
 /** URL pública servida por GET /api/carnet-upload/[filename]. */
 export function publicCarnetUploadUrl(filename: string): string {
-  return `/api/carnet-upload/${filename}`;
+  return withBasePath(`/api/carnet-upload/${filename}`);
 }
 
 export async function saveCarnetLogoUpload(

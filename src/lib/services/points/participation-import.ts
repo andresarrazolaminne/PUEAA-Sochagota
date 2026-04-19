@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ParticipationStatus } from "@/generated/prisma/enums";
+import { assertImportScoresAllowedForPlatformChallenge } from "@/lib/services/points/platform-import-guard";
 
 /** Ledger vinculado a una participación (un movimiento neto por reto/importación). */
 export const LEDGER_REF_PARTICIPATION = "PARTICIPATION";
@@ -16,6 +17,8 @@ export async function setImportedParticipationScore(
 ) {
   const challenge = await prisma.challenge.findUnique({ where: { id: challengeId } });
   if (!challenge) throw new Error("Reto no encontrado.");
+
+  await assertImportScoresAllowedForPlatformChallenge(employeeId, challengeId);
 
   const base = `Reto: ${challenge.title}`;
   const reason =

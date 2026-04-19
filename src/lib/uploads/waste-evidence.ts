@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { withBasePath } from "@/lib/base-path";
 
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -23,7 +24,7 @@ export function getWasteEvidenceDir(): string {
 }
 
 export function publicWasteEvidenceUrl(filename: string): string {
-  return `/api/waste-evidence/${filename}`;
+  return withBasePath(`/api/waste-evidence/${filename}`);
 }
 
 export async function saveWasteEvidenceUpload(

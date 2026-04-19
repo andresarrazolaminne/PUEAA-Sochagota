@@ -13,6 +13,12 @@ RUN npm ci
 
 COPY . .
 RUN npx prisma generate
+
+# Incluir en el build para `basePath` y URLs públicas (ej. /pueaa detrás de Nginx).
+# En raíz: docker build --build-arg NEXT_PUBLIC_BASE_PATH= .
+ARG NEXT_PUBLIC_BASE_PATH=
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
+
 RUN npm run build
 
 ENV NODE_ENV=production

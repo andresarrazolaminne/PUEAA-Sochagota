@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { withBasePathIfNeeded } from "@/lib/base-path";
 
 type Props = {
   src: string;
@@ -31,6 +32,6 @@ export function CarnetCampaignImage({ src, alt, className, sizes, priority }: Pr
 
   return (
     // eslint-disable-next-line @next/next/no-img-element -- URL configurable por admin (externa)
-    <img src={src} alt={alt} className={baseClass} />
+    <img src={withBasePathIfNeeded(src)} alt={alt} className={baseClass} />
   );
 }

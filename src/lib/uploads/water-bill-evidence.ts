@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { withBasePath } from "@/lib/base-path";
 
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -23,7 +24,7 @@ export function getWaterBillEvidenceDir(): string {
 }
 
 export function publicWaterBillEvidenceUrl(filename: string): string {
-  return `/api/water-bill-evidence/${filename}`;
+  return withBasePath(`/api/water-bill-evidence/${filename}`);
 }
 
 export async function saveWaterBillEvidenceUpload(

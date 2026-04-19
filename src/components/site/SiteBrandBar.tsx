@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { withBasePathIfNeeded } from "@/lib/base-path";
 import { getSiteLogoSettings } from "@/lib/services/settings/app-settings";
 
 export async function SiteBrandBar() {
@@ -27,7 +28,7 @@ export async function SiteBrandBar() {
             ) : (
               // eslint-disable-next-line @next/next/no-img-element -- rutas /api/ y URLs externas
               <img
-                src={logoSrc}
+                src={withBasePathIfNeeded(logoSrc)}
                 alt="Compañía Termoeléctrica de Sochagota"
                 className="h-9 w-auto max-h-9 max-w-[220px] object-contain object-left sm:h-10 sm:max-h-10"
               />

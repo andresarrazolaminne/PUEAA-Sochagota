@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { withBasePath } from "@/lib/base-path";
 
 const MAX_BYTES = 3 * 1024 * 1024;
 
@@ -25,7 +26,7 @@ export function getSiteLogoUploadDir(): string {
 }
 
 export function publicSiteLogoUploadUrl(filename: string): string {
-  return `/api/site-logo-upload/${filename}`;
+  return withBasePath(`/api/site-logo-upload/${filename}`);
 }
 
 export async function saveSiteLogoUpload(

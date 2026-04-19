@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { withBasePathIfNeeded } from "@/lib/base-path";
 
 type Props = {
   imageSrc: string;
@@ -39,6 +40,8 @@ export function PhotoModalTrigger({
     };
   }, [open, close]);
 
+  const resolvedSrc = useMemo(() => withBasePathIfNeeded(imageSrc), [imageSrc]);
+
   const overlay = (
     <div className="fixed inset-0 z-[9999]" role="presentation">
       <button
@@ -70,14 +73,14 @@ export function PhotoModalTrigger({
           <div className="min-h-0 flex-1 overflow-auto p-2 sm:p-4">
             {/* URLs dinámicas servidas por /api/... de evidencias */}
             <img
-              src={imageSrc}
+              src={resolvedSrc}
               alt={imageAlt}
               className="mx-auto max-h-[min(78vh,840px)] w-auto max-w-full object-contain"
             />
           </div>
           <div className="shrink-0 border-t border-[#1f3328] px-3 py-2.5 sm:px-4">
             <a
-              href={imageSrc}
+              href={resolvedSrc}
               target="_blank"
               rel="noopener noreferrer"
               className="font-mono text-[11px] text-[#8fd4a8] underline-offset-2 hover:underline"

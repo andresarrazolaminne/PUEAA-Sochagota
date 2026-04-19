@@ -10,11 +10,17 @@
 
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        # Subruta pública, ej. /pueaa → https://dominio/pueaa
+        NEXT_PUBLIC_BASE_PATH: ""
     ports:
       - "3000:3000"
     environment:
       DATABASE_URL: file:/app/data/app.db
+      # Debe coincidir con el build si usas subruta (mismo valor que args arriba).
+      NEXT_PUBLIC_BASE_PATH: ""
     volumes:
       - pueaa_data:/app/data
 

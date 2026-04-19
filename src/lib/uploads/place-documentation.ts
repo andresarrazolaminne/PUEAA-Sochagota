@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { withBasePath } from "@/lib/base-path";
 
 const MAX_BYTES = 4 * 1024 * 1024;
 
@@ -23,7 +24,7 @@ export function getPlaceDocumentationDir(): string {
 }
 
 export function publicPlaceDocumentationUrl(filename: string): string {
-  return `/api/place-documentation/${filename}`;
+  return withBasePath(`/api/place-documentation/${filename}`);
 }
 
 export async function savePlaceDocumentationUpload(

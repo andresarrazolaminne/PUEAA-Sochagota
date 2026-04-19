@@ -13,7 +13,9 @@ export default function AdminImportacionesPage() {
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#7aab8c]">
           Usa la primera hoja del libro con encabezados en la fila 1. Las columnas admiten varios nombres
           (ver plantillas). Los puntajes por reto actualizan el ledger: volver a importar la misma fila
-          sustituye el movimiento anterior de ese empleado en ese reto.
+          sustituye el movimiento anterior de ese empleado en ese reto. Para retos gestionados en la
+          plataforma, la importación de puntajes se rechaza si el usuario ya tiene puntos ganados por el
+          tablero en ese mismo reto (evita doble conteo); use retos «fuera de plataforma» para históricos.
         </p>
       </div>
 
@@ -35,7 +37,7 @@ export default function AdminImportacionesPage() {
 
       <ExcelImportBlock
         title="Puntajes por empleado y reto"
-        description="Requiere empleados y retos ya existentes (mismo código de reto que en la importación de retos). Columnas: cédula, codigo_reto, puntos, nota (opcional, aparece en el motivo del ledger)."
+        description="Requiere empleados y retos ya existentes (mismo código de reto que en la importación de retos). Columnas: cédula, codigo_reto, puntos, nota (opcional, aparece en el motivo del ledger). Si el reto es de plataforma y el usuario ya sumó puntos jugando, la fila fallará (mensaje en el resultado)."
         templateHref="/api/import/plantilla/puntajes"
         templateLabel="Descargar plantilla puntajes.xlsx"
         importAction={importScoresExcelAction}
