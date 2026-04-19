@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PUEAA Sochagota
 
-## Getting Started
+Plataforma web (Next.js App Router, TypeScript) con **Prisma 7** y **SQLite** (`data/app.db`). Flujo: **`/`** landing pública → **`/login`** (solo cédula) → **`/tablero`** perfil, retos y herramientas (ruta protegida). Ledger de puntos en `PointLedger`.
 
-First, run the development server:
+## Desarrollo local
 
 ```bash
+cp .env.example .env
+npm install
+npx prisma migrate dev
+npm run db:seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- Salud + BD: [http://localhost:3000/api/health](http://localhost:3000/api/health)
+- Tras iniciar sesión: [http://localhost:3000/tablero](http://localhost:3000/tablero)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Despliegue (Docker)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Objetivo: **un contenedor** en VPS o similar con **volumen persistente** para SQLite y evidencias (`/app/data`).
 
-## Learn More
+```bash
+docker compose up --build
+```
 
-To learn more about Next.js, take a look at the following resources:
+`DATABASE_URL` en compose usa `file:/app/data/app.db`. Copia de seguridad del volumen: `docker compose cp web:/app/data/app.db ./respaldo.db`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Serverless** (p. ej. Vercel) no es adecuado para SQLite en disco ni para `better-sqlite3` sin adaptación; este repo está orientado a **proceso Node + volumen** o hosting con sistema de archivos persistente.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Scripts útiles
 
-## Deploy on Vercel
+| Script | Descripción |
+|--------|-------------|
+| `npm run db:generate` | Regenera el cliente Prisma |
+| `npm run db:migrate` | Migraciones (dev) |
+| `npm run db:seed` | Datos demo (rangos, empleados, assets de entorno) |
+| `npm run db:studio` | Prisma Studio |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Empleados demo (seed)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Usuario: cédula `1234567890`
+- Admin: cédula `0000000000`

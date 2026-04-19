@@ -1,0 +1,22 @@
+# PUEAA — un servicio web + volumen para SQLite y evidencias.
+# Copia .env.example a .env y ajusta si hace falta.
+# Arranque: docker compose up --build
+#
+# Backups: copiar el volumen o el archivo /app/data/app.db desde el contenedor
+#   docker compose cp web:/app/data/app.db ./backup-$(date +%F).db
+#
+# Nota: SQLite con un solo writer encaja bien con un contenedor; evita múltiples
+# réplicas escribiendo el mismo archivo de BD sin coordinación.
+
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: file:/app/data/app.db
+    volumes:
+      - pueaa_data:/app/data
+
+volumes:
+  pueaa_data:

@@ -1,0 +1,350 @@
+// PUEAA — dominio gamificación (SQLite) + migraciones versionadas
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ChallengeType {
+  WATER_BILL
+  WASTE_EVIDENCE
+  /** Documentar puntos de acopio / reciclaje (lugares concretos). */
+  PLACE_DOCUMENTATION
+  TRIVIA
+  MINIGAME
+  OTHER
+}
+
+enum ParticipationStatus {
+  DRAFT
+  SUBMITTED
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum EvidenceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/** Tipos de residuo / fracción que un punto de acopio puede aceptar (directorio público). */
+enum AcopioCategory {
+  BATTERIES_PORTABLE
+  BATTERIES_AUTO_INDUSTRIAL
+  WEEE_SMALL
+  WEEE_LARGE
+  COOKING_OIL_USED
+  MOTOR_OIL_USED
+  OIL_FILTERS
+  DEBRIS_RCD
+  WOOD_PRUNING_BULKY
+  HAZARDOUS_CHEMICALS
+  PAINTS_SOLVENTS_AEROSOLS
+  AGROCHEMICAL_CONTAINERS
+  EXPIRED_MEDICINES
+  USED_TIRES
+  LAMPS_FLUORESCENT
+  PLASTIC_RECYCLING
+  PAPER_CARDBOARD
+  GLASS
+  TEXTILE
+  ORGANIC_COMPOST
+}
+
+model Employee {
+  id        String   @id @default(cuid())
+  cedula    String   @unique
+  fullName  String
+  photoUrl  String?
+  role      Role     @default(USER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions         Session[]
+  participations   ChallengeParticipation[]
+  waterBillPeriods WaterBillPeriod[]
+  waterBillPeriodReviews WaterBillPeriod[] @relation("WaterBillPeriodReviewedBy")
+  pointEntries     PointLedger[]          @relation("EmployeePoints")
+  reviews          EvidenceSubmission[] @relation("ReviewedBy")
+  placeDocReviews  PlaceDocumentationSubmission[] @relation("PlaceDocReviewedBy")
+  triviaAttempts   TriviaQuestionAttempt[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
+model Rank {
+  id             String   @id @default(cuid())
+  name           String
+  sortOrder      Int      @unique
+  minPoints      Int
+  shieldAssetUrl String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Challenge {
+  id              String          @id @default(cuid())
+  /** Clave única para importaciones Excel (p. ej. RETO-2024-A). */
+  code            String?         @unique
+  title           String
+  description     String?
+  type            ChallengeType
+  startsAt        DateTime
+  endsAt          DateTime
+  basePoints      Int
+  earlyBirdEndsAt DateTime?
+  earlyBirdSlots  Int?
+  optimalPerCapitaM3 Float?
+  requiresEvidence Boolean        @default(false)
+  /** Si es false, no se muestra como reto jugable en el tablero (histórico / solo puntajes). */
+  platformManaged Boolean        @default(true)
+  /** Reto visible en listados admin; inactivo oculta del tablero aunque sea platformManaged. */
+  active          Boolean        @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  participations   ChallengeParticipation[]
+  waterBillPeriods WaterBillPeriod[]
+  triviaQuestions  TriviaQuestion[]
+}
+
+/** Pregunta de un reto TRIVIA; `Challenge.basePoints` = puntos por respuesta correcta. */
+model TriviaQuestion {
+  id          String   @id @default(cuid())
+  challengeId String
+  prompt      String
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  challenge Challenge            @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  options   TriviaAnswerOption[]
+  attempts  TriviaQuestionAttempt[]
+
+  @@index([challengeId])
+}
+
+/** Un intento por empleado y pregunta (acertijo o fallo); puntos solo en aciertos vía ledger. */
+model TriviaQuestionAttempt {
+  id               String   @id @default(cuid())
+  employeeId       String
+  questionId       String
+  selectedOptionId String
+  isCorrect        Boolean
+  createdAt        DateTime @default(now())
+
+  employee Employee       @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  question TriviaQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, questionId])
+  @@index([employeeId])
+  @@index([questionId])
+}
+
+model TriviaAnswerOption {
+  id         String  @id @default(cuid())
+  questionId String
+  label      String
+  sortOrder  Int     @default(0)
+  isCorrect  Boolean @default(false)
+
+  question TriviaQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+}
+
+/** Declaración mensual de consumo (un reto WATER_BILL anual, N filas por empleado). */
+model WaterBillPeriod {
+  id                       String          @id @default(cuid())
+  employeeId               String
+  challengeId              String
+  /** Primer día del mes de facturación (normalizado). */
+  periodStart              DateTime
+  totalM3                  Float
+  householdMembers         Int
+  computedPerCapitaM3      Float
+  /** Ruta servida vía API de evidencias (recibo). */
+  evidenceFilePath         String?
+  improvementPointsAwarded Int             @default(0)
+  maintenancePointsAwarded Int             @default(0)
+  /** Aprobado al declarar; admin puede rechazar (revoca puntos en ledger). */
+  status                   EvidenceStatus  @default(APPROVED)
+  reviewedById             String?
+  reviewedAt               DateTime?
+  rejectReason             String?
+  createdAt                DateTime        @default(now())
+  updatedAt                DateTime        @updatedAt
+
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  challenge  Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  reviewedBy Employee? @relation("WaterBillPeriodReviewedBy", fields: [reviewedById], references: [id])
+
+  @@unique([employeeId, challengeId, periodStart])
+  @@index([employeeId, challengeId])
+  @@index([reviewedById])
+}
+
+model ChallengeParticipation {
+  id           String                @id @default(cuid())
+  employeeId   String
+  challengeId  String
+  status       ParticipationStatus   @default(DRAFT)
+  isEarlyBird  Boolean               @default(false)
+  submittedAt  DateTime?
+  waterTotalM3      Float?
+  householdMembers  Int?
+  computedPerCapita Float?
+  score             Int?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  evidence                   EvidenceSubmission[]
+  placeDocumentationSubmissions PlaceDocumentationSubmission[]
+
+  @@unique([employeeId, challengeId])
+}
+
+model EvidenceSubmission {
+  id              String         @id @default(cuid())
+  participationId String
+  filePath        String
+  /** Centro o punto de acopio declarado por el empleado (reto residuos). */
+  siteName        String?
+  siteAddress     String?
+  /** Clave normalizada (nombre + dirección) para detectar duplicidad entre usuarios. */
+  siteKey         String?
+  status          EvidenceStatus @default(PENDING)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  rejectReason    String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  participation ChallengeParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+  reviewedBy    Employee?              @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([siteKey])
+}
+
+/** Envío de un lugar concreto (reto PLACE_DOCUMENTATION); puede promoverse a DirectoryPlace al aprobar. */
+model PlaceDocumentationSubmission {
+  id                String         @id @default(cuid())
+  participationId   String
+  placeName         String
+  address           String
+  /** Clave normalizada (nombre + dirección) para detectar duplicidad entre usuarios. */
+  siteKey           String?
+  phone             String?
+  /** Ruta pública vía API (ej. /api/place-documentation/…). */
+  photoFilePath     String?
+  status            EvidenceStatus @default(PENDING)
+  reviewedById      String?
+  reviewedAt        DateTime?
+  rejectReason      String?
+  directoryPlaceId  String?        @unique
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  participation          ChallengeParticipation               @relation(fields: [participationId], references: [id], onDelete: Cascade)
+  reviewedBy             Employee?                          @relation("PlaceDocReviewedBy", fields: [reviewedById], references: [id])
+  directoryPlace         DirectoryPlace?                    @relation(fields: [directoryPlaceId], references: [id])
+  submissionCategories PlaceDocumentationSubmissionCategory[]
+
+  @@index([siteKey])
+}
+
+/** Fracciones que el jugador declara que el punto gestiona (reto PLACE_DOCUMENTATION). */
+model PlaceDocumentationSubmissionCategory {
+  id           String                       @id @default(cuid())
+  submissionId String
+  category     AcopioCategory
+  submission   PlaceDocumentationSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, category])
+  @@index([category])
+}
+
+model PointLedger {
+  id         String   @id @default(cuid())
+  employeeId String
+  delta      Int
+  reason     String
+  refType    String?
+  refId      String?
+  createdAt  DateTime @default(now())
+
+  employee Employee @relation("EmployeePoints", fields: [employeeId], references: [id], onDelete: Cascade)
+}
+
+model EnvironmentAsset {
+  id        String @id @default(cuid())
+  minPoints Int    @unique
+  assetUrl  String
+  label     String?
+}
+
+model DirectoryPlace {
+  id        String @id @default(cuid())
+  name      String
+  address   String?
+  phone     String?
+  /** URL servida por la app (foto opcional del punto). */
+  photoUrl  String?
+  lat       Float?
+  lng       Float?
+  sortOrder Int    @default(0)
+
+  categories     DirectoryPlaceCategory[]
+  fromSubmission PlaceDocumentationSubmission?
+}
+
+/** Qué fracciones acepta cada punto del directorio (N:N). */
+model DirectoryPlaceCategory {
+  id        String         @id @default(cuid())
+  placeId   String
+  category  AcopioCategory
+  place     DirectoryPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, category])
+  @@index([category])
+}
+
+model WaterTip {
+  id        String @id @default(cuid())
+  body      String
+  sortOrder Int    @default(0)
+}
+
+model ContactChannel {
+  id        String @id @default(cuid())
+  label     String
+  value     String
+  sortOrder Int    @default(0)
+}
+
+/** Clave/valor para ajustes globales (logo del carné, textos, etc.) */
+model AppSetting {
+  key   String @id
+  value String
+}

@@ -1,8 +1,24 @@
 @import "tailwindcss";
 
+/* —— PUEAA · estética “arcade / 90s” con fondos claros —— */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --game-sky-top: #a8c8ec;
+  --game-sky-bottom: #dceaf8;
+  --game-sky-mid: #c4daf2;
+  --game-panel: #f4f8fc;
+  --game-panel-deep: #e4eef8;
+  --game-border: #1e3a5f;
+  --game-border-soft: #6b8cb8;
+  --game-text: #132238;
+  --game-text-muted: #3d5670;
+  --game-accent: #2563eb;
+  --game-accent-hot: #db2777;
+  --game-success: #0d9488;
+  --game-warn: #c2410c;
+  --game-danger: #b91c1c;
+  --game-pixel-shadow: #1e3a5f;
+  --background: var(--game-sky-bottom);
+  --foreground: var(--game-text);
 }
 
 @theme inline {
@@ -12,15 +28,87 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  min-height: 100%;
+  background: linear-gradient(
+    165deg,
+    var(--game-sky-top) 0%,
+    var(--game-sky-mid) 38%,
+    var(--game-sky-bottom) 72%,
+    #b8cfe0 100%
+  );
+  color: var(--game-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Líneas tipo CRT muy suaves (no oscurece) */
+body.game-scanlines::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(19, 34, 56, 0.04) 2px,
+    rgba(19, 34, 56, 0.04) 4px
+  );
+}
+
+/* Panel “cartucho” con bisel */
+.game-panel-3d {
+  background: linear-gradient(180deg, var(--game-panel) 0%, var(--game-panel-deep) 100%);
+  border: 3px solid var(--game-border);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.55) inset,
+    0 6px 0 var(--game-pixel-shadow),
+    0 10px 24px rgba(30, 58, 95, 0.22);
+}
+
+.game-btn-primary {
+  border: 3px solid var(--game-border);
+  background: linear-gradient(180deg, #38bdf8 0%, #2563eb 55%, #1d4ed8 100%);
+  color: #f8fafc;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.35) inset,
+    0 5px 0 #1e3a8a,
+    0 8px 16px rgba(37, 99, 235, 0.35);
+}
+
+.game-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.game-btn-primary:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.3) inset,
+    0 3px 0 #1e3a8a,
+    0 4px 10px rgba(37, 99, 235, 0.3);
+}
+
+.game-btn-ghost {
+  border: 2px solid var(--game-border-soft);
+  background: var(--game-panel);
+  color: var(--game-text);
+  box-shadow: 0 3px 0 var(--game-border);
+}
+
+.game-btn-ghost:hover {
+  filter: brightness(1.03);
+}
+
+.game-btn-danger {
+  border: 3px solid #7f1d1d;
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+  color: #fff7ed;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset, 0 5px 0 #7f1d1d;
+}
+
+.font-pixel {
+  font-family: var(--font-pixel), var(--font-geist-mono), ui-monospace, monospace;
+  letter-spacing: 0.04em;
 }
