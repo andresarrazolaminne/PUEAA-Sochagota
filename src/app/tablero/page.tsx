@@ -286,13 +286,14 @@ export default async function TableroPage({
           >
             Herramientas
           </h2>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             {(
               [
                 { href: "/tablero/herramientas/cronometro-ducha", label: "Cronómetro de ducha" },
                 { href: "/tablero/herramientas/directorio", label: "Directorio de acopio" },
                 { href: "/tablero/herramientas/tips-agua", label: "Tips de agua" },
                 { href: "/tablero/herramientas/contacto", label: "Contacto" },
+                { href: "/tablero/herramientas/origen-puntos", label: "Origen de mis puntos" },
               ] as const
             ).map(({ href, label }) => (
               <Link
