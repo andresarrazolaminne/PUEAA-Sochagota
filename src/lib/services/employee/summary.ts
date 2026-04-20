@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { getTotalPointsForEmployee } from "@/lib/services/points/ledger";
 
+const DEFAULT_ENV_IMAGE = "/pixel-placeholder.svg";
+
 export async function getEmployeeGamificationSummary(employeeId: string) {
   const totalPoints = await getTotalPointsForEmployee(employeeId);
   const ranks = await prisma.rank.findMany({ orderBy: { sortOrder: "asc" } });
@@ -21,11 +23,15 @@ export async function getEmployeeGamificationSummary(employeeId: string) {
   /** Nivel 1 = rango más bajo (menor `sortOrder`), N = más alto. Una estrella por nivel alcanzado. */
   const rankLevel = idx >= 0 ? idx + 1 : 0;
 
+  const environmentImageSrc =
+    rank?.environmentImageUrl?.trim() || DEFAULT_ENV_IMAGE;
+
   return {
     totalPoints,
     rankName: rank?.name ?? "—",
     progressPct: Number.isFinite(progressPct) ? progressPct : 0,
     rankLevel,
     totalRankLevels,
+    environmentImageSrc,
   };
 }

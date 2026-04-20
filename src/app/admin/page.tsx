@@ -49,6 +49,14 @@ export default function AdminHomePage() {
           <p className="mt-1 text-xs text-[#6a8c78]">Totales por empleado y detalle del ledger.</p>
         </Link>
         <Link
+          href="/admin/rangos"
+          className="rounded-md border border-[#243d30] bg-[#0d1512] p-5 shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)] transition hover:border-[#35664a]"
+        >
+          <p className="font-mono text-[10px] uppercase tracking-widest text-[#5a8f72]">Campaña</p>
+          <p className="mt-2 text-sm font-medium text-[#dff7ea]">Rangos e imagen de entorno</p>
+          <p className="mt-1 text-xs text-[#6a8c78]">Nombres, umbrales de puntos y visor del tablero.</p>
+        </Link>
+        <Link
           href="/admin/importaciones"
           className="rounded-md border border-[#243d30] bg-[#0d1512] p-5 shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)] transition hover:border-[#35664a]"
         >

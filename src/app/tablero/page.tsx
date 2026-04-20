@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Special_Elite } from "next/font/google";
@@ -9,6 +8,7 @@ import { getEmployeeGamificationSummary } from "@/lib/services/employee/summary"
 import { getCarnetDisplaySettings } from "@/lib/services/settings/app-settings";
 import { listChallengesForTablero } from "@/lib/services/challenges/queries";
 import { Role } from "@/generated/prisma/enums";
+import { withBasePath, withBasePathIfNeeded } from "@/lib/base-path";
 import { challengePlayerModulePath } from "@/modules/challenges/registry";
 import {
   ChallengeTypeIcon,
@@ -33,6 +33,14 @@ export default async function TableroPage({
     getCarnetDisplaySettings(),
     listChallengesForTablero(),
   ]);
+
+  const envSrc = summary.environmentImageSrc;
+  const environmentImgUrl =
+    envSrc.startsWith("http://") || envSrc.startsWith("https://")
+      ? envSrc
+      : envSrc.startsWith("/api/")
+        ? withBasePathIfNeeded(envSrc)
+        : withBasePath(envSrc);
 
   return (
     <>
@@ -198,13 +206,13 @@ export default async function TableroPage({
             </div>
             <div className="relative flex flex-1 items-center justify-center p-4">
               <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,transparent,transparent_2px,rgba(30,58,95,0.06)_2px,rgba(30,58,95,0.06)_4px)]" />
-              <Image
-                src="/pixel-placeholder.svg"
-                alt="Paisaje de referencia (placeholder)"
+              {/* eslint-disable-next-line @next/next/no-img-element -- rutas /public y /api con basePath */}
+              <img
+                src={environmentImgUrl}
+                alt={`Entorno de campaña · ${summary.rankName}`}
                 width={320}
                 height={180}
                 className="relative z-[1] max-h-[min(40vh,220px)] w-auto opacity-90"
-                priority
               />
             </div>
           </div>

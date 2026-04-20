@@ -5,25 +5,34 @@ import { ChallengeType, Role } from "../src/generated/prisma/enums";
 const prisma = createPrismaClient();
 
 async function main() {
+  const defaultEnvImg = "/pixel-placeholder.svg";
   const ranks = [
-    { name: "Burbuja en prácticas", sortOrder: 0, minPoints: 0, shieldAssetUrl: null as string | null },
-    { name: "Aprendiz del grifo", sortOrder: 1, minPoints: 75, shieldAssetUrl: null },
-    { name: "Navegante del caudal", sortOrder: 2, minPoints: 180, shieldAssetUrl: null },
-    { name: "Domador de válvulas", sortOrder: 3, minPoints: 380, shieldAssetUrl: null },
-    { name: "Guardián de cuenca", sortOrder: 4, minPoints: 650, shieldAssetUrl: null },
-    { name: "Alquimista de la gota", sortOrder: 5, minPoints: 1000, shieldAssetUrl: null },
-    { name: "Custodio del manantial", sortOrder: 6, minPoints: 1500, shieldAssetUrl: null },
-    { name: "Embajador PUEAA", sortOrder: 7, minPoints: 2200, shieldAssetUrl: null },
-    { name: "Sabio del flujo eficiente", sortOrder: 8, minPoints: 3100, shieldAssetUrl: null },
-    { name: "Leyenda del grifo dorado", sortOrder: 9, minPoints: 4500, shieldAssetUrl: null },
+    { name: "Burbuja en prácticas", sortOrder: 0, minPoints: 0, shieldAssetUrl: null as string | null, environmentImageUrl: defaultEnvImg },
+    { name: "Aprendiz del grifo", sortOrder: 1, minPoints: 75, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Navegante del caudal", sortOrder: 2, minPoints: 180, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Domador de válvulas", sortOrder: 3, minPoints: 380, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Guardián de cuenca", sortOrder: 4, minPoints: 650, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Alquimista de la gota", sortOrder: 5, minPoints: 1000, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Custodio del manantial", sortOrder: 6, minPoints: 1500, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Embajador PUEAA", sortOrder: 7, minPoints: 2200, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Sabio del flujo eficiente", sortOrder: 8, minPoints: 3100, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Leyenda del grifo dorado", sortOrder: 9, minPoints: 4500, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
   ];
   for (const r of ranks) {
     await prisma.rank.upsert({
       where: { sortOrder: r.sortOrder },
       create: r,
-      update: { name: r.name, minPoints: r.minPoints, shieldAssetUrl: r.shieldAssetUrl },
+      update: {
+        name: r.name,
+        minPoints: r.minPoints,
+        shieldAssetUrl: r.shieldAssetUrl,
+        environmentImageUrl: r.environmentImageUrl,
+      },
     });
   }
+
+  /** Tabla legacy; el visor usa `Rank.environmentImageUrl`. */
+  await prisma.environmentAsset.deleteMany();
 
   await prisma.employee.upsert({
     where: { cedula: "1234567890" },
@@ -46,19 +55,6 @@ async function main() {
     },
     update: { role: Role.ADMIN },
   });
-
-  const envAssets = [
-    { minPoints: 0, assetUrl: "/pixel-placeholder.svg", label: "Inicial" },
-    { minPoints: 200, assetUrl: "/pixel-placeholder.svg", label: "Mejorando" },
-    { minPoints: 500, assetUrl: "/pixel-placeholder.svg", label: "Florecido" },
-  ];
-  for (const a of envAssets) {
-    await prisma.environmentAsset.upsert({
-      where: { minPoints: a.minPoints },
-      create: a,
-      update: { assetUrl: a.assetUrl, label: a.label },
-    });
-  }
 
   await prisma.appSetting.upsert({
     where: { key: "carnet_logo_path" },

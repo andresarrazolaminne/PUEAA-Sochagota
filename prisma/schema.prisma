@@ -92,13 +92,15 @@ model Session {
 }
 
 model Rank {
-  id             String   @id @default(cuid())
-  name           String
-  sortOrder      Int      @unique
-  minPoints      Int
-  shieldAssetUrl String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  name                 String
+  sortOrder            Int      @unique
+  minPoints            Int
+  shieldAssetUrl       String?
+  /** Imagen del visor de entorno del tablero para este rango (ruta /public, /api/... o https). */
+  environmentImageUrl  String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 }
 
 model Challenge {
@@ -297,6 +299,7 @@ model PointLedger {
   employee Employee @relation("EmployeePoints", fields: [employeeId], references: [id], onDelete: Cascade)
 }
 
+/** @deprecated Usar `Rank.environmentImageUrl`. Conservado por migraciones; no usar en código nuevo. */
 model EnvironmentAsset {
   id        String @id @default(cuid())
   minPoints Int    @unique

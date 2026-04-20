@@ -6,6 +6,7 @@ const nav = [
   { href: "/admin/usuarios", label: "Usuarios" },
   { href: "/admin/retos", label: "Retos" },
   { href: "/admin/puntajes", label: "Puntajes" },
+  { href: "/admin/rangos", label: "Rangos" },
   { href: "/admin/importaciones", label: "Importar" },
   { href: "/admin/carnet", label: "Carné" },
   { href: "/admin/sitio", label: "Logo sitio" },
