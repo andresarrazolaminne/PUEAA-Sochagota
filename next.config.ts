@@ -11,6 +11,8 @@ function basePathFromEnv(): string | undefined {
 
 const nextConfig: NextConfig = {
   basePath: basePathFromEnv(),
+  /** Evita bucles 308 /pueaa ↔ /pueaa/ detrás de Nginx/Cloudflare con `basePath`. */
+  trailingSlash: true,
   experimental: {
     serverActions: {
       bodySizeLimit: "8mb",
