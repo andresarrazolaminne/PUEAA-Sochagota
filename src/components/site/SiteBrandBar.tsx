@@ -1,6 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
-import { withBasePathIfNeeded } from "@/lib/base-path";
+import { withBasePath, withBasePathIfNeeded } from "@/lib/base-path";
 import { getSiteLogoSettings } from "@/lib/services/settings/app-settings";
 
 export async function SiteBrandBar() {
@@ -17,13 +16,11 @@ export async function SiteBrandBar() {
         >
           <span className="relative flex h-9 w-auto max-w-[min(100%,220px)] shrink-0 items-center sm:h-10">
             {useNext ? (
-              <Image
-                src={logoSrc}
+              // eslint-disable-next-line @next/next/no-img-element -- /_next/image con basePath puede responder 400 en producción
+              <img
+                src={withBasePath(logoSrc)}
                 alt="Compañía Termoeléctrica de Sochagota"
-                width={220}
-                height={48}
                 className="h-9 w-auto max-h-9 object-contain object-left sm:h-10 sm:max-h-10"
-                priority
               />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element -- rutas /api/ y URLs externas

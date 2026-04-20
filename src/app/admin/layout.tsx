@@ -43,6 +43,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
             <Link
               href="/logout"
+              prefetch={false}
               className="rounded-lg border-2 border-[#7f1d1d] bg-[#fee2e2] px-3 py-1.5 font-mono text-xs font-semibold text-[#991b1b] shadow-[0_3px_0_#7f1d1d] transition hover:brightness-105 active:translate-y-px"
             >
               Salir

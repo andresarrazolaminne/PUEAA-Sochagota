@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import { withBasePathIfNeeded } from "@/lib/base-path";
+import { withBasePath, withBasePathIfNeeded } from "@/lib/base-path";
 import { saveSiteLogoBrandingAction } from "./actions";
 
 type Props = {
@@ -15,7 +14,10 @@ function PreviewImage({ src, alt }: { src: string; alt: string }) {
     "max-h-24 w-auto max-w-full rounded border border-[#243d30] bg-[#0d1512] object-contain p-3 sm:max-h-28";
 
   if (useNext) {
-    return <Image src={src} alt={alt} width={280} height={96} className={className} />;
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- mismo criterio que SiteBrandBar
+      <img src={withBasePath(src)} alt={alt} className={className} />
+    );
   }
 
   return (
