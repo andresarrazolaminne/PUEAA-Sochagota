@@ -105,7 +105,6 @@ export default async function AdminReportesPage({
         </p>
         <form
           method="get"
-          action="/admin/reportes/"
           className="mt-4 flex flex-wrap items-end gap-4"
         >
           <label className="flex flex-col gap-1">
