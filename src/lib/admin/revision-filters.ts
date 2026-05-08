@@ -17,6 +17,41 @@ export function buildRevisionRedirectTo(
   return qs ? `/admin/retos/${challengeId}/revision?${qs}` : `/admin/retos/${challengeId}/revision`;
 }
 
+/** URL para supervisión de acopio (detalle o cola), preservando filtros y registro seleccionado. */
+export function buildPlaceSupervisionRedirectTo(
+  challengeId: string,
+  mode: "detail" | "revision",
+  opts: {
+    pq?: string;
+    pstatus?: string;
+    psort?: string;
+    pid?: string;
+    q?: string;
+    dupOnly?: boolean;
+    sort?: RevisionSort;
+  },
+): string {
+  const params = new URLSearchParams();
+  if (mode === "revision") {
+    const q = opts.q?.trim();
+    if (q) params.set("q", q);
+    if (opts.dupOnly) params.set("dup", "1");
+    if (opts.sort === "newest") params.set("sort", "newest");
+  }
+  const pq = opts.pq?.trim();
+  if (pq) params.set("pq", pq);
+  if (opts.pstatus && opts.pstatus !== "all") params.set("pstatus", opts.pstatus);
+  if (opts.psort && opts.psort !== "created_desc") params.set("psort", opts.psort);
+  if (opts.pid) params.set("pid", opts.pid);
+
+  const base =
+    mode === "revision"
+      ? `/admin/retos/${challengeId}/revision`
+      : `/admin/retos/${challengeId}`;
+  const qs = params.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
 function matchesEmployeeQuery(
   fullName: string,
   cedula: string,

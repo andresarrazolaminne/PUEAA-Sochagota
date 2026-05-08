@@ -147,6 +147,64 @@ export type PlaceDocumentationPendingRow = {
   employee: { id: string; fullName: string; cedula: string };
 };
 
+/** Fila admin: todos los estados para supervisión en panel único. */
+export type PlaceDocumentationAdminRow = {
+  id: string;
+  status: EvidenceStatus;
+  placeName: string;
+  address: string;
+  phone: string | null;
+  photoFilePath: string | null;
+  siteKey: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  reviewedAt: Date | null;
+  reviewedBy: { fullName: string } | null;
+  rejectReason: string | null;
+  directoryPlaceId: string | null;
+  possibleDuplicate: boolean;
+  categories: AcopioCategory[];
+  employee: { id: string; fullName: string; cedula: string };
+};
+
+export async function listAllPlaceDocumentationForChallengeAdmin(
+  challengeId: string,
+): Promise<PlaceDocumentationAdminRow[]> {
+  const overlap = await duplicateOverlapIdsForPlaceChallenge(challengeId);
+  const rows = await prisma.placeDocumentationSubmission.findMany({
+    where: { participation: { challengeId } },
+    include: {
+      submissionCategories: true,
+      participation: {
+        include: {
+          employee: { select: { id: true, fullName: true, cedula: true } },
+        },
+      },
+      reviewedBy: { select: { fullName: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return rows.map((r) => ({
+    id: r.id,
+    status: r.status,
+    placeName: r.placeName,
+    address: r.address,
+    phone: r.phone,
+    photoFilePath: r.photoFilePath,
+    siteKey: r.siteKey,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    reviewedAt: r.reviewedAt,
+    reviewedBy: r.reviewedBy,
+    rejectReason: r.rejectReason,
+    directoryPlaceId: r.directoryPlaceId,
+    possibleDuplicate: overlap.has(r.id),
+    categories: r.submissionCategories.map((c) => c.category),
+    employee: r.participation.employee,
+  }));
+}
+
 export async function listPendingPlaceDocumentationForChallenge(
   challengeId: string,
 ): Promise<PlaceDocumentationPendingRow[]> {

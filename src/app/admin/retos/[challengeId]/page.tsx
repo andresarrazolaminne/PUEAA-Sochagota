@@ -7,12 +7,12 @@ import {
   listPendingWasteEvidenceForChallenge,
   listRecentWasteEvidenceDecisionsForChallenge,
 } from "@/lib/services/challenges/waste-evidence";
-import {
-  listPendingPlaceDocumentationForChallenge,
-  listRecentPlaceDocumentationDecisionsForChallenge,
-} from "@/lib/services/challenges/place-documentation";
+import { listAllPlaceDocumentationForChallengeAdmin } from "@/lib/services/challenges/place-documentation";
 import { listTriviaQuestionsForChallengeAdmin } from "@/lib/services/challenges/trivia";
-import { rejectWaterBillPeriodAction } from "../water-bill-period-actions";
+import {
+  approveWaterBillPeriodAction,
+  rejectWaterBillPeriodAction,
+} from "../water-bill-period-actions";
 import {
   challengeAdminRevisionPath,
   challengePlayerModulePath,
@@ -20,7 +20,7 @@ import {
 } from "@/modules/challenges/registry";
 import { ReviewAlerts } from "./ReviewAlerts";
 import { WasteReviewSection } from "./WasteReviewSection";
-import { PlaceReviewSection } from "./PlaceReviewSection";
+import { PlaceReviewSection, type PlaceSupervisionQuery } from "./PlaceReviewSection";
 import { ChallengeType } from "@/generated/prisma/enums";
 import { formatPeriodLabelEs } from "@/modules/challenges/water-bill/period";
 import { DEFAULT_OPTIMAL_PER_CAPITA_M3 } from "@/modules/challenges/water-bill/scoring";
@@ -35,6 +35,7 @@ import { LEDGER_REF_PLACE_DOCUMENTATION_APPROVAL } from "@/modules/challenges/pl
 import { LEDGER_REF_TRIVIA_CORRECT } from "@/modules/challenges/trivia/ledger";
 import { EvidenceStatus } from "@/generated/prisma/enums";
 import { PhotoModalTrigger } from "@/components/PhotoModalTrigger";
+import { EvidenceZoomImage } from "@/components/EvidenceZoomImage";
 
 function formatDate(d: Date) {
   return new Intl.DateTimeFormat("es-CO", { dateStyle: "short" }).format(d);
@@ -63,25 +64,56 @@ export default async function AdminChallengeDetailPage({
   searchParams,
 }: {
   params: Promise<{ challengeId: string }>;
-  searchParams: Promise<{ ok?: string; err?: string }>;
+  searchParams: Promise<{
+    ok?: string;
+    err?: string;
+    wq?: string;
+    wstatus?: string;
+    wsort?: string;
+    wid?: string;
+    pq?: string;
+    pstatus?: string;
+    psort?: string;
+    pid?: string;
+  }>;
 }) {
   const { challengeId } = await params;
   const sp = await searchParams;
   const challenge = await getChallengeById(challengeId);
   if (!challenge) notFound();
+  const waterQuery = (sp.wq ?? "").trim().toLowerCase();
+  const waterStatus = sp.wstatus === "approved" || sp.wstatus === "rejected" ? sp.wstatus : "all";
+  const waterSort =
+    sp.wsort === "created_asc" ||
+    sp.wsort === "created_desc" ||
+    sp.wsort === "period_asc" ||
+    sp.wsort === "period_desc"
+      ? sp.wsort
+      : "period_desc";
+  const selectedWaterId = typeof sp.wid === "string" ? sp.wid : "";
+
+  const placePq = typeof sp.pq === "string" ? sp.pq : "";
+  const placePstatus =
+    sp.pstatus === "pending" ||
+    sp.pstatus === "approved" ||
+    sp.pstatus === "rejected" ||
+    sp.pstatus === "all"
+      ? sp.pstatus
+      : "all";
+  const placePsort =
+    sp.psort === "created_asc" ||
+    sp.psort === "created_desc" ||
+    sp.psort === "place_asc" ||
+    sp.psort === "place_desc"
+      ? sp.psort
+      : "created_desc";
+  const placePid = typeof sp.pid === "string" ? sp.pid : "";
 
   const playPath = challengePlayerModulePath(challenge.type, challengeId);
   const hasExtension = challengeTypeHasAdminModuleExtension(challenge.type);
 
-  const [
-    ledgerRows,
-    waterPeriods,
-    wastePending,
-    wasteRecent,
-    placePending,
-    placeRecent,
-    triviaRows,
-  ] = await Promise.all([
+  const [ledgerRows, waterPeriods, wastePending, wasteRecent, placeDocumentationRows, triviaRows] =
+    await Promise.all([
     listLedgerEntriesForChallenge(challengeId),
     challenge.type === ChallengeType.WATER_BILL
       ? listWaterBillPeriodsForChallengeAdmin(challengeId)
@@ -93,13 +125,74 @@ export default async function AdminChallengeDetailPage({
       ? listRecentWasteEvidenceDecisionsForChallenge(challengeId, 40)
       : Promise.resolve([]),
     challenge.type === ChallengeType.PLACE_DOCUMENTATION
-      ? listPendingPlaceDocumentationForChallenge(challengeId)
-      : Promise.resolve([]),
-    challenge.type === ChallengeType.PLACE_DOCUMENTATION
-      ? listRecentPlaceDocumentationDecisionsForChallenge(challengeId, 40)
+      ? listAllPlaceDocumentationForChallengeAdmin(challengeId)
       : Promise.resolve([]),
     challenge.type === ChallengeType.TRIVIA ? listTriviaQuestionsForChallengeAdmin(challengeId) : Promise.resolve([]),
   ]);
+
+  const filteredWaterPeriods =
+    challenge.type === ChallengeType.WATER_BILL
+      ? waterPeriods
+          .filter((row) => {
+            if (waterStatus === "approved" && row.status !== EvidenceStatus.APPROVED) return false;
+            if (waterStatus === "rejected" && row.status !== EvidenceStatus.REJECTED) return false;
+            if (!waterQuery) return true;
+            const haystack = `${row.employee.fullName} ${row.employee.cedula}`.toLowerCase();
+            return haystack.includes(waterQuery);
+          })
+          .sort((a, b) => {
+            if (waterSort === "created_asc") return a.createdAt.getTime() - b.createdAt.getTime();
+            if (waterSort === "created_desc") return b.createdAt.getTime() - a.createdAt.getTime();
+            if (waterSort === "period_asc") return a.periodStart.getTime() - b.periodStart.getTime();
+            return b.periodStart.getTime() - a.periodStart.getTime();
+          })
+      : [];
+
+  const waterByEmployee =
+    challenge.type === ChallengeType.WATER_BILL
+      ? filteredWaterPeriods.reduce(
+          (acc, row) => {
+            const prev = acc.get(row.employeeId);
+            if (prev) {
+              prev.rows.push(row);
+            } else {
+              acc.set(row.employeeId, {
+                employeeId: row.employeeId,
+                fullName: row.employee.fullName,
+                cedula: row.employee.cedula,
+                rows: [row],
+              });
+            }
+            return acc;
+          },
+          new Map<
+            string,
+            {
+              employeeId: string;
+              fullName: string;
+              cedula: string;
+              rows: (typeof waterPeriods)[number][];
+            }
+          >(),
+        )
+      : new Map<
+          string,
+          {
+            employeeId: string;
+            fullName: string;
+            cedula: string;
+            rows: (typeof waterPeriods)[number][];
+          }
+        >();
+
+  const groupedWaterRows =
+    challenge.type === ChallengeType.WATER_BILL
+      ? [...waterByEmployee.values()].sort((a, b) => a.fullName.localeCompare(b.fullName, "es"))
+      : [];
+  const selectedWaterRow =
+    challenge.type === ChallengeType.WATER_BILL
+      ? filteredWaterPeriods.find((row) => row.id === selectedWaterId) ?? filteredWaterPeriods[0] ?? null
+      : null;
 
   return (
     <div className="space-y-6">
@@ -312,110 +405,260 @@ export default async function AdminChallengeDetailPage({
             Un reto anual; cada fila es un mes de facturación. Los puntos del mes están en el ledger con
             referencias WATER_*.
           </p>
+
+          <form method="get" className="mt-4 flex flex-wrap items-end gap-3 rounded border border-[#243d30] bg-[#0d1512] p-3">
+            <label className="flex min-w-[14rem] flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-[#6a9c80]">
+                Buscar usuario (nombre o cédula)
+              </span>
+              <input
+                name="wq"
+                defaultValue={sp.wq ?? ""}
+                className="rounded border border-[#243d30] bg-[#111916] px-2.5 py-2 font-mono text-xs text-[#e8f5ee]"
+                placeholder="Ej: García o 123456"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-[#6a9c80]">Estado</span>
+              <select
+                name="wstatus"
+                defaultValue={waterStatus}
+                className="rounded border border-[#243d30] bg-[#111916] px-2.5 py-2 font-mono text-xs text-[#e8f5ee]"
+              >
+                <option value="all">Todos</option>
+                <option value="approved">Vigentes</option>
+                <option value="rejected">Rechazados</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-[#6a9c80]">Orden</span>
+              <select
+                name="wsort"
+                defaultValue={waterSort}
+                className="rounded border border-[#243d30] bg-[#111916] px-2.5 py-2 font-mono text-xs text-[#e8f5ee]"
+              >
+                <option value="period_desc">Mes más reciente primero</option>
+                <option value="period_asc">Mes más antiguo primero</option>
+                <option value="created_desc">Registro más reciente primero</option>
+                <option value="created_asc">Registro más antiguo primero</option>
+              </select>
+            </label>
+            <button
+              type="submit"
+              className="rounded border border-[#35664a] bg-[#142018] px-3 py-2 font-mono text-xs text-[#b8f0cc] hover:border-[#4a8060]"
+            >
+              Aplicar filtros
+            </button>
+          </form>
+
+          <div className="mt-3 grid gap-2 font-mono text-xs text-[#7aab8c] sm:grid-cols-3">
+            <p>
+              Usuarios en vista: <span className="text-[#8fd4a8]">{groupedWaterRows.length}</span>
+            </p>
+            <p>
+              Registros en vista: <span className="text-[#8fd4a8]">{filteredWaterPeriods.length}</span>
+            </p>
+            <p>
+              Total registros reto: <span className="text-[#8fd4a8]">{waterPeriods.length}</span>
+            </p>
+          </div>
+
           {waterPeriods.length === 0 ? (
             <p className="mt-4 font-mono text-sm text-[#6a8c78]">Aún no hay declaraciones.</p>
+          ) : groupedWaterRows.length === 0 ? (
+            <p className="mt-4 font-mono text-sm text-[#6a8c78]">
+              No hay resultados con los filtros seleccionados.
+            </p>
           ) : (
-            <div className="mt-4 overflow-x-auto">
-              <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
-                <thead>
-                  <tr className="border-b border-[#243d30] font-mono text-[10px] uppercase tracking-wider text-[#5a8f72]">
-                    <th className="py-2 pr-3">Periodo</th>
-                    <th className="py-2 pr-3">Empleado</th>
-                    <th className="py-2 pr-3">Estado</th>
-                    <th className="py-2 pr-3 text-right">m³</th>
-                    <th className="py-2 pr-3 text-right">Hab.</th>
-                    <th className="py-2 pr-3 text-right">m³/p</th>
-                    <th className="py-2 pr-3 text-right">Pts mej.</th>
-                    <th className="py-2 pr-3 text-right">Pts ópt.</th>
-                    <th className="py-2 pr-3">Evidencia</th>
-                    <th className="py-2 pr-0">Revisión</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {waterPeriods.map((row) => (
-                    <tr key={row.id} className="border-b border-[#1a2820] text-[#c8e6d4]">
-                      <td className="py-2.5 pr-3 font-mono text-xs capitalize">
-                        {formatPeriodLabelEs(row.periodStart)}
-                      </td>
-                      <td className="py-2.5 pr-3">
-                        <Link
-                          href={`/admin/puntajes/${row.employeeId}`}
-                          className="text-[#8fd4a8] underline-offset-2 hover:underline"
-                        >
-                          {row.employee.fullName}
-                        </Link>
-                      </td>
-                      <td className="py-2.5 pr-3 font-mono text-[10px]">
-                        {row.status === EvidenceStatus.REJECTED ? (
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(360px,1fr)_minmax(460px,1.2fr)]">
+              <div className="rounded-lg border border-[#243d30] bg-[#0d1512] p-3">
+                <h3 className="font-mono text-[10px] uppercase tracking-wider text-[#5a8f72]">
+                  Lista de registros (selecciona uno)
+                </h3>
+                <div className="mt-3 max-h-[70vh] space-y-4 overflow-auto pr-1">
+                  {groupedWaterRows.map((group) => {
+                    const pointsTotal = group.rows.reduce(
+                      (sum, row) => sum + row.improvementPointsAwarded + row.maintenancePointsAwarded,
+                      0,
+                    );
+                    return (
+                      <div key={group.employeeId} className="rounded border border-[#243d30] bg-[#111916] p-2.5">
+                        <p className="text-xs text-[#c8e6d4]">
+                          <Link
+                            href={`/admin/puntajes/${group.employeeId}`}
+                            className="text-[#8fd4a8] underline-offset-2 hover:underline"
+                          >
+                            {group.fullName}
+                          </Link>
+                          <span className="ml-2 font-mono text-[10px] text-[#6a8c78]">{group.cedula}</span>
+                        </p>
+                        <p className="mt-1 font-mono text-[10px] text-[#6a8c78]">
+                          Registros: {group.rows.length} · Puntos agua: {pointsTotal}
+                        </p>
+                        <div className="mt-2 space-y-1">
+                          {group.rows.map((row) => {
+                            const params = new URLSearchParams();
+                            if (sp.wq) params.set("wq", sp.wq);
+                            if (sp.wstatus) params.set("wstatus", sp.wstatus);
+                            if (sp.wsort) params.set("wsort", sp.wsort);
+                            params.set("wid", row.id);
+                            return (
+                              <Link
+                                key={row.id}
+                                href={`/admin/retos/${challengeId}?${params.toString()}`}
+                                scroll={false}
+                                className={`block rounded border px-2 py-1.5 font-mono text-[10px] ${
+                                  selectedWaterRow?.id === row.id
+                                    ? "border-[#4a8060] bg-[#142018] text-[#b8f0cc]"
+                                    : "border-[#243d30] bg-[#0d1512] text-[#9ed4b4] hover:border-[#35664a]"
+                                }`}
+                              >
+                                <span className="capitalize">{formatPeriodLabelEs(row.periodStart)}</span>
+                                <span className="mx-1 text-[#6a8c78]">·</span>
+                                <span>{formatDateTime(row.createdAt)}</span>
+                                <span className="mx-1 text-[#6a8c78]">·</span>
+                                <span>{row.status === EvidenceStatus.REJECTED ? "Rechazado" : "Vigente"}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-[#243d30] bg-[#0d1512] p-4">
+                {selectedWaterRow ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#243d30] pb-3">
+                      <div>
+                        <p className="text-sm text-[#c8e6d4]">
+                          {selectedWaterRow.employee.fullName}
+                          <span className="ml-2 font-mono text-xs text-[#6a8c78]">
+                            {selectedWaterRow.employee.cedula}
+                          </span>
+                        </p>
+                        <p className="mt-1 font-mono text-xs text-[#7aab8c] capitalize">
+                          {formatPeriodLabelEs(selectedWaterRow.periodStart)} · Registrado{" "}
+                          {formatDateTime(selectedWaterRow.createdAt)}
+                        </p>
+                      </div>
+                      <p className="font-mono text-xs">
+                        {selectedWaterRow.status === EvidenceStatus.REJECTED ? (
                           <span className="text-[#f0b4b4]">Rechazado</span>
                         ) : (
                           <span className="text-[#8fd4a8]">Vigente</span>
                         )}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right font-mono text-xs">{row.totalM3}</td>
-                      <td className="py-2.5 pr-3 text-right font-mono text-xs">{row.householdMembers}</td>
-                      <td className="py-2.5 pr-3 text-right font-mono text-xs">
-                        {row.computedPerCapitaM3.toFixed(2)}
-                      </td>
-                      <td className="py-2.5 pr-3 text-right font-mono text-xs">{row.improvementPointsAwarded}</td>
-                      <td className="py-2.5 pr-3 text-right font-mono text-xs">
-                        {row.maintenancePointsAwarded}
-                      </td>
-                      <td className="py-2.5 pr-3">
-                        {row.evidenceFilePath ? (
-                          <PhotoModalTrigger
-                            imageSrc={row.evidenceFilePath}
-                            className="font-mono text-xs text-[#8fd4a8] underline-offset-2 hover:underline"
-                            imageAlt="Evidencia de recibo de agua"
-                          >
-                            Ver imagen
-                          </PhotoModalTrigger>
-                        ) : (
-                          <span className="text-[#6a8c78]">—</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 pr-0 align-top">
-                        {row.status === EvidenceStatus.REJECTED ? (
-                          <div className="max-w-xs space-y-1 font-mono text-[10px] text-[#9ed4b4]">
-                            {row.rejectReason ? (
-                              <p className="text-[#f0c4c4]">
-                                <span className="text-[#6a8c78]">Motivo: </span>
-                                {row.rejectReason}
-                              </p>
-                            ) : null}
-                            {row.reviewedBy ? (
-                              <p className="text-[#6a8c78]">
-                                Por {row.reviewedBy.fullName}
-                                {row.reviewedAt ? ` · ${formatDateTime(row.reviewedAt)}` : ""}
-                              </p>
-                            ) : null}
-                          </div>
-                        ) : row.status === EvidenceStatus.APPROVED ? (
-                          <form action={rejectWaterBillPeriodAction} className="flex max-w-xs flex-col gap-1">
-                            <input type="hidden" name="periodId" value={row.id} />
-                            <input type="hidden" name="challengeId" value={challengeId} />
-                            <textarea
-                              name="rejectReason"
-                              rows={2}
-                              placeholder="Motivo del rechazo (obligatorio para auditoría)"
-                              className="resize-y rounded border border-[#243d30] bg-[#0d1512] px-2 py-1 font-mono text-[10px] text-[#e8f5ee]"
-                              required
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 text-sm sm:grid-cols-2">
+                      <p className="rounded border border-[#243d30] bg-[#111916] px-3 py-2">
+                        <span className="font-mono text-[10px] text-[#6a8c78]">Consumo total m³</span>
+                        <br />
+                        <strong className="font-mono text-[#c8e6d4]">{selectedWaterRow.totalM3}</strong>
+                      </p>
+                      <p className="rounded border border-[#243d30] bg-[#111916] px-3 py-2">
+                        <span className="font-mono text-[10px] text-[#6a8c78]">Habitantes</span>
+                        <br />
+                        <strong className="font-mono text-[#c8e6d4]">{selectedWaterRow.householdMembers}</strong>
+                      </p>
+                      <p className="rounded border border-[#243d30] bg-[#111916] px-3 py-2">
+                        <span className="font-mono text-[10px] text-[#6a8c78]">m³ por persona</span>
+                        <br />
+                        <strong className="font-mono text-[#c8e6d4]">
+                          {selectedWaterRow.computedPerCapitaM3.toFixed(2)}
+                        </strong>
+                      </p>
+                      <p className="rounded border border-[#243d30] bg-[#111916] px-3 py-2">
+                        <span className="font-mono text-[10px] text-[#6a8c78]">Puntos del registro</span>
+                        <br />
+                        <strong className="font-mono text-[#c8e6d4]">
+                          mejora +{selectedWaterRow.improvementPointsAwarded} · óptimo +
+                          {selectedWaterRow.maintenancePointsAwarded}
+                        </strong>
+                      </p>
+                    </div>
+
+                    <div className="rounded border border-[#243d30] bg-[#111916] px-3 py-2 text-xs text-[#9ed4b4]">
+                      {selectedWaterRow.reviewedBy ? (
+                        <p>
+                          Última revisión: {selectedWaterRow.reviewedBy.fullName}
+                          {selectedWaterRow.reviewedAt ? ` · ${formatDateTime(selectedWaterRow.reviewedAt)}` : ""}
+                        </p>
+                      ) : (
+                        <p>Sin revisión administrativa registrada.</p>
+                      )}
+                      {selectedWaterRow.rejectReason ? (
+                        <p className="mt-1 text-[#f0c4c4]">
+                          <span className="text-[#6a8c78]">Motivo rechazo: </span>
+                          {selectedWaterRow.rejectReason}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="rounded border border-[#243d30] bg-[#111916] px-3 py-2">
+                      <p className="font-mono text-[10px] uppercase tracking-wide text-[#6a9c80]">Evidencia</p>
+                      <div className="mt-2">
+                        {selectedWaterRow.evidenceFilePath ? (
+                          <div className="space-y-2">
+                            <EvidenceZoomImage
+                              imageSrc={selectedWaterRow.evidenceFilePath}
+                              alt="Miniatura de evidencia de recibo de agua"
                             />
-                            <button
-                              type="submit"
-                              className="w-fit rounded border border-[#6a3030] bg-[#1a1010] px-2 py-1 font-mono text-[10px] text-[#f0b4b4] hover:border-[#8a4040]"
+                            <PhotoModalTrigger
+                              imageSrc={selectedWaterRow.evidenceFilePath}
+                              className="font-mono text-xs text-[#8fd4a8] underline-offset-2 hover:underline"
+                              imageAlt="Evidencia de recibo de agua"
                             >
-                              Rechazar mes
-                            </button>
-                          </form>
+                              Ver imagen (ampliar)
+                            </PhotoModalTrigger>
+                          </div>
                         ) : (
-                          <span className="text-[#6a8c78]">—</span>
+                          <span className="text-xs text-[#6a8c78]">Este registro no tiene imagen adjunta.</span>
                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    </div>
+
+                    <div className="rounded border border-[#243d30] bg-[#111916] px-3 py-2">
+                      <p className="font-mono text-[10px] uppercase tracking-wide text-[#6a9c80]">
+                        Acciones de supervisión
+                      </p>
+                      {selectedWaterRow.status === EvidenceStatus.APPROVED ? (
+                        <form action={rejectWaterBillPeriodAction} className="mt-2 flex max-w-md flex-col gap-1.5">
+                          <input type="hidden" name="periodId" value={selectedWaterRow.id} />
+                          <input type="hidden" name="challengeId" value={challengeId} />
+                          <textarea
+                            name="rejectReason"
+                            rows={3}
+                            placeholder="Motivo del rechazo (obligatorio para auditoría)"
+                            className="resize-y rounded border border-[#243d30] bg-[#0d1512] px-2 py-1 font-mono text-[11px] text-[#e8f5ee]"
+                            required
+                          />
+                          <button
+                            type="submit"
+                            className="w-fit rounded border border-[#6a3030] bg-[#1a1010] px-2.5 py-1.5 font-mono text-[11px] text-[#f0b4b4] hover:border-[#8a4040]"
+                          >
+                            Rechazar registro
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={approveWaterBillPeriodAction} className="mt-2">
+                          <input type="hidden" name="periodId" value={selectedWaterRow.id} />
+                          <input type="hidden" name="challengeId" value={challengeId} />
+                          <button
+                            type="submit"
+                            className="rounded border border-[#35664a] bg-[#142018] px-2.5 py-1.5 font-mono text-[11px] text-[#b8f0cc] hover:border-[#4a8060]"
+                          >
+                            Aprobar nuevamente
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           )}
         </section>
@@ -436,9 +679,14 @@ export default async function AdminChallengeDetailPage({
         <PlaceReviewSection
           challengeId={challengeId}
           basePoints={challenge.basePoints}
-          placePending={placePending}
-          placeRecent={placeRecent}
-          redirectTo={`/admin/retos/${challengeId}`}
+          placeRows={placeDocumentationRows}
+          placeQuery={{
+            pq: placePq,
+            pstatus: placePstatus as PlaceSupervisionQuery["pstatus"],
+            psort: placePsort as PlaceSupervisionQuery["psort"],
+            pid: placePid,
+          }}
+          supervisionMode="detail"
           navLink={{ href: challengeAdminRevisionPath(challengeId), label: "Ir a cola de revisión" }}
         />
       ) : null}

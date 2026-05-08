@@ -40,3 +40,17 @@ export async function ensurePlaceDocumentationApprovalLedger(
     },
   });
 }
+
+/** Elimina movimientos de ledger por aprobación de un envío de acopio (p. ej. al revertir rechazo). */
+export async function removePlaceDocumentationApprovalLedger(
+  tx: TransactionCtx,
+  params: { employeeId: string; submissionId: string },
+): Promise<void> {
+  await tx.pointLedger.deleteMany({
+    where: {
+      employeeId: params.employeeId,
+      refType: LEDGER_REF_PLACE_DOCUMENTATION_APPROVAL,
+      refId: params.submissionId,
+    },
+  });
+}

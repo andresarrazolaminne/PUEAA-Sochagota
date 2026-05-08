@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { ChallengeType, EvidenceStatus } from "@/generated/prisma/enums";
-import { ensurePlaceDocumentationApprovalLedger } from "@/modules/challenges/place-documentation/ledger";
+import {
+  ensurePlaceDocumentationApprovalLedger,
+  removePlaceDocumentationApprovalLedger,
+} from "@/modules/challenges/place-documentation/ledger";
 import {
   MIN_REJECT_REASON_LENGTH,
   parseAdminReviewRedirectTarget,
@@ -42,7 +45,10 @@ export async function approvePlaceDocumentationAction(formData: FormData) {
     throw new Error("Envío no válido.");
   }
 
-  if (subPreview.status !== EvidenceStatus.PENDING) {
+  if (
+    subPreview.status !== EvidenceStatus.PENDING &&
+    subPreview.status !== EvidenceStatus.REJECTED
+  ) {
     return;
   }
 
@@ -76,7 +82,10 @@ export async function approvePlaceDocumentationAction(formData: FormData) {
       throw new Error("Envío no válido.");
     }
 
-    if (sub.status !== EvidenceStatus.PENDING) {
+    if (
+      sub.status !== EvidenceStatus.PENDING &&
+      sub.status !== EvidenceStatus.REJECTED
+    ) {
       return;
     }
 
@@ -151,7 +160,7 @@ export async function rejectPlaceDocumentationAction(formData: FormData) {
     redirect(`${url.pathname}?${url.searchParams.toString()}`);
   }
 
-  const sub = await prisma.placeDocumentationSubmission.findUnique({
+  const subPreview = await prisma.placeDocumentationSubmission.findUnique({
     where: { id: submissionId },
     include: {
       participation: { include: { challenge: true } },
@@ -159,32 +168,77 @@ export async function rejectPlaceDocumentationAction(formData: FormData) {
   });
 
   if (
-    !sub ||
-    sub.participation.challengeId !== challengeId ||
-    sub.participation.challenge.type !== ChallengeType.PLACE_DOCUMENTATION
+    !subPreview ||
+    subPreview.participation.challengeId !== challengeId ||
+    subPreview.participation.challenge.type !== ChallengeType.PLACE_DOCUMENTATION
   ) {
     throw new Error("Envío no válido.");
   }
 
-  if (sub.status !== EvidenceStatus.PENDING) {
+  if (
+    subPreview.status !== EvidenceStatus.PENDING &&
+    subPreview.status !== EvidenceStatus.APPROVED
+  ) {
     return;
   }
 
-  await prisma.placeDocumentationSubmission.update({
-    where: { id: submissionId },
-    data: {
-      status: EvidenceStatus.REJECTED,
-      reviewedById: admin.id,
-      reviewedAt: new Date(),
-      rejectReason: reason,
-    },
+  const hadDirectory = subPreview.directoryPlaceId != null;
+  const wasApproved = subPreview.status === EvidenceStatus.APPROVED;
+
+  await prisma.$transaction(async (tx) => {
+    const sub = await tx.placeDocumentationSubmission.findUnique({
+      where: { id: submissionId },
+      include: {
+        participation: { include: { challenge: true } },
+      },
+    });
+
+    if (
+      !sub ||
+      sub.participation.challengeId !== challengeId ||
+      sub.participation.challenge.type !== ChallengeType.PLACE_DOCUMENTATION
+    ) {
+      throw new Error("Envío no válido.");
+    }
+
+    if (sub.status !== EvidenceStatus.PENDING && sub.status !== EvidenceStatus.APPROVED) {
+      return;
+    }
+
+    if (wasApproved) {
+      await removePlaceDocumentationApprovalLedger(tx, {
+        employeeId: sub.participation.employeeId,
+        submissionId: sub.id,
+      });
+    }
+
+    const dirId = sub.directoryPlaceId;
+
+    await tx.placeDocumentationSubmission.update({
+      where: { id: submissionId },
+      data: {
+        status: EvidenceStatus.REJECTED,
+        directoryPlaceId: null,
+        reviewedById: admin.id,
+        reviewedAt: new Date(),
+        rejectReason: reason,
+      },
+    });
+
+    if (dirId) {
+      await tx.directoryPlace.delete({ where: { id: dirId } });
+    }
   });
 
   revalidatePath("/admin/retos");
   revalidatePath(`/admin/retos/${challengeId}`);
   revalidatePath(`/admin/retos/${challengeId}/revision`);
+  revalidatePath("/admin/puntajes");
   revalidatePath("/tablero");
   revalidatePath(`/tablero/retos/${challengeId}/places`);
+  if (hadDirectory) {
+    revalidatePath("/tablero/herramientas/directorio");
+  }
 
   const redirectTo = parseAdminReviewRedirectTarget(formData.get("redirectTo"));
   if (redirectTo) redirectAfterReviewAction(redirectTo, "rejected");
