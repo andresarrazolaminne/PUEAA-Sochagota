@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/require-admin";
-import { withBasePath } from "@/lib/base-path";
 import { prisma } from "@/lib/prisma";
 import {
   PARTICIPATION_ACTIVITY_ORDER,
@@ -72,9 +71,7 @@ export default async function AdminReportesPage({
     .map((activity) => `actividad=${encodeURIComponent(activity)}`)
     .join("&");
 
-  const downloadHref = withBasePath(
-    `/api/admin/reportes/participacion?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}${actividadesQuery ? `&${actividadesQuery}` : ""}`,
-  );
+  const downloadHref = `/api/admin/reportes/participacion?desde=${encodeURIComponent(desde)}&hasta=${encodeURIComponent(hasta)}${actividadesQuery ? `&${actividadesQuery}` : ""}`;
 
   return (
     <div className="space-y-6">
@@ -108,7 +105,7 @@ export default async function AdminReportesPage({
         </p>
         <form
           method="get"
-          action={withBasePath("/admin/reportes/")}
+          action="/admin/reportes/"
           className="mt-4 flex flex-wrap items-end gap-4"
         >
           <label className="flex flex-col gap-1">
