@@ -138,6 +138,12 @@ export async function submitWaterBillPeriodAction(challengeId: string, formData:
     },
   });
 
+  if (existingRow?.status === EvidenceStatus.APPROVED) {
+    throw new Error(
+      "Ese mes ya está aprobado. Si necesitas corregirlo, contacta a administración.",
+    );
+  }
+
   const approvedOtherCount = await prisma.waterBillPeriod.count({
     where: {
       employeeId: emp.id,

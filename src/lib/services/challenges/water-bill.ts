@@ -77,8 +77,9 @@ export async function getMissingPeriodLabels(
   now = new Date(),
 ): Promise<string[]> {
   const options = listOpenPeriodOptions(startsAt, endsAt, now);
+  // Cualquier declaración cuenta (pendiente/aprobada/rechazada): el aviso es “mes sin envío”.
   const existing = await prisma.waterBillPeriod.findMany({
-    where: { employeeId, challengeId, status: EvidenceStatus.APPROVED },
+    where: { employeeId, challengeId },
     select: { periodStart: true },
   });
   const have = new Set(existing.map((e) => e.periodStart.getTime()));

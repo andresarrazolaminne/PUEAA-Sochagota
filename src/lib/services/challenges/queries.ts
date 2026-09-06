@@ -23,6 +23,28 @@ export async function listChallengesForTablero(now = new Date()) {
   });
 }
 
+/** Tablero + estado de participación del empleado (si existe). */
+export async function listChallengesForTableroWithMyStatus(
+  employeeId: string,
+  now = new Date(),
+) {
+  const challenges = await listChallengesForTablero(now);
+  if (challenges.length === 0) return [] as Array<(typeof challenges)[number] & { myStatus: string | null }>;
+
+  const parts = await prisma.challengeParticipation.findMany({
+    where: {
+      employeeId,
+      challengeId: { in: challenges.map((c) => c.id) },
+    },
+    select: { challengeId: true, status: true },
+  });
+  const byId = new Map(parts.map((p) => [p.challengeId, p.status]));
+  return challenges.map((c) => ({
+    ...c,
+    myStatus: byId.get(c.id) ?? null,
+  }));
+}
+
 export async function listChallengesForAdmin() {
   return prisma.challenge.findMany({
     orderBy: [{ startsAt: "desc" }],
@@ -122,27 +144,29 @@ export async function getUnifiedPendingReviewInbox() {
 
   const items: Item[] = [];
   for (const r of waste) {
+    const challengeId = r.participation.challenge.id;
     items.push({
       kind: "waste",
       id: r.id,
-      challengeId: r.participation.challenge.id,
+      challengeId,
       challengeTitle: r.participation.challenge.title,
       employeeName: r.participation.employee.fullName,
       employeeCedula: r.participation.employee.cedula,
       createdAt: r.createdAt,
-      href: `/admin/retos/${r.participation.challenge.id}/revision`,
+      href: `/admin/retos/${challengeId}/revision?estatus=pending`,
     });
   }
   for (const r of place) {
+    const challengeId = r.participation.challenge.id;
     items.push({
       kind: "place",
       id: r.id,
-      challengeId: r.participation.challenge.id,
+      challengeId,
       challengeTitle: r.participation.challenge.title,
       employeeName: r.participation.employee.fullName,
       employeeCedula: r.participation.employee.cedula,
       createdAt: r.createdAt,
-      href: `/admin/retos/${r.participation.challenge.id}/revision`,
+      href: `/admin/retos/${challengeId}/revision?pid=${encodeURIComponent(r.id)}&pstatus=pending`,
     });
   }
   for (const r of water) {
@@ -154,7 +178,7 @@ export async function getUnifiedPendingReviewInbox() {
       employeeName: r.employee.fullName,
       employeeCedula: r.employee.cedula,
       createdAt: r.createdAt,
-      href: `/admin/retos/${r.challenge.id}?waterPeriod=${r.id}`,
+      href: `/admin/retos/${r.challenge.id}?wid=${encodeURIComponent(r.id)}&wstatus=pending`,
     });
   }
 

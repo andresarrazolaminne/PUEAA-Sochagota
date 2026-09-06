@@ -646,7 +646,8 @@ export default async function AdminChallengeDetailPage({
                           <textarea
                             name="rejectReason"
                             rows={3}
-                            placeholder="Motivo del rechazo (obligatorio para auditoría)"
+                            minLength={10}
+                            placeholder="Motivo del rechazo (mín. 10 caracteres)"
                             className="resize-y rounded border border-[#243d30] bg-[#0d1512] px-2 py-1 font-mono text-[11px] text-[#e8f5ee]"
                             required
                           />

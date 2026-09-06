@@ -1,6 +1,8 @@
 import { existsSync } from "fs";
 import { readFile, realpath } from "fs/promises";
 import path from "path";
+import type { Employee } from "@/generated/prisma/client";
+import { Role } from "@/generated/prisma/enums";
 import { requireSessionEmployeeApi } from "@/lib/auth/require-session-api";
 
 const CONTENT_TYPE: Record<string, string> = {
@@ -11,16 +13,37 @@ const CONTENT_TYPE: Record<string, string> = {
   ".svg": "image/svg+xml",
 };
 
-/** Sirve un archivo de uploads solo si hay sesión de empleado activa. */
+export type PrivateUploadAuthorizer = (
+  employee: Employee,
+  filename: string,
+) => Promise<boolean>;
+
+/** Dueño o admin (evidencias con PII). */
+export function allowOwnerOrAdmin(ownerEmployeeId: string | null | undefined) {
+  return async (employee: Employee, _filename: string) => {
+    if (employee.role === Role.ADMIN) return true;
+    return !!ownerEmployeeId && ownerEmployeeId === employee.id;
+  };
+}
+
+/** Sirve un archivo de uploads solo si hay sesión (y opcionalmente autorización extra). */
 export async function servePrivateUpload(
   filename: string,
   getDir: () => string,
+  authorize?: PrivateUploadAuthorizer,
 ): Promise<Response> {
   const gate = await requireSessionEmployeeApi();
   if (!gate.ok) return gate.response;
 
   if (!/^[a-zA-Z0-9._-]+$/.test(filename)) {
     return new Response("Not found", { status: 404 });
+  }
+
+  if (authorize) {
+    const allowed = await authorize(gate.employee, filename);
+    if (!allowed) {
+      return new Response("Forbidden", { status: 403 });
+    }
   }
 
   const dir = getDir();

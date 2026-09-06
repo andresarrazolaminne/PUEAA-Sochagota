@@ -11,6 +11,7 @@ import {
 import { formatPeriodLabelEs } from "@/modules/challenges/water-bill/period";
 import { applyEarlyBirdIfEligible } from "@/lib/services/challenges/early-bird";
 import { ParticipationStatus } from "@/generated/prisma/enums";
+import { MIN_REJECT_REASON_LENGTH } from "@/lib/admin/review-action-redirect";
 
 export async function rejectWaterBillPeriodAction(formData: FormData) {
   const periodId = formData.get("periodId");
@@ -20,6 +21,9 @@ export async function rejectWaterBillPeriodAction(formData: FormData) {
 
   if (typeof periodId !== "string" || !periodId || typeof challengeId !== "string" || !challengeId) {
     throw new Error("Datos incompletos.");
+  }
+  if (reason.length < MIN_REJECT_REASON_LENGTH) {
+    throw new Error(`El motivo de rechazo debe tener al menos ${MIN_REJECT_REASON_LENGTH} caracteres.`);
   }
 
   const admin = await requireAdmin(`/admin/retos/${challengeId}`);
@@ -50,7 +54,7 @@ export async function rejectWaterBillPeriodAction(formData: FormData) {
         status: EvidenceStatus.REJECTED,
         reviewedById: admin.id,
         reviewedAt: new Date(),
-        rejectReason: reason.length > 0 ? reason : "Sin motivo indicado.",
+        rejectReason: reason,
       },
     });
   });

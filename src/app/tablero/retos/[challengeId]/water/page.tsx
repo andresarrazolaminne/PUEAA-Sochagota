@@ -60,7 +60,11 @@ export default async function WaterBillChallengePage({
   const enrolled = !!participation && participation.status !== ParticipationStatus.DRAFT;
 
   const periods = enrolled ? await listPeriodsForEmployee(employee.id, challengeId) : [];
-  const periodOptions = getPeriodOptionsForChallenge(challenge.startsAt, challenge.endsAt);
+  const allPeriodOptions = getPeriodOptionsForChallenge(challenge.startsAt, challenge.endsAt);
+  const approvedStarts = new Set(
+    periods.filter((p) => p.status === EvidenceStatus.APPROVED).map((p) => p.periodStart.getTime()),
+  );
+  const periodOptions = allPeriodOptions.filter((o) => !approvedStarts.has(o.periodStart.getTime()));
   const missing = enrolled
     ? await getMissingPeriodLabels(employee.id, challengeId, challenge.startsAt, challenge.endsAt)
     : [];

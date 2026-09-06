@@ -6,7 +6,7 @@ import { CarnetCampaignImage } from "@/components/carnet/CarnetCampaignImage";
 import { requireEmployee } from "@/lib/auth/require-employee";
 import { getEmployeeGamificationSummary } from "@/lib/services/employee/summary";
 import { getCarnetDisplaySettings } from "@/lib/services/settings/app-settings";
-import { listChallengesForTablero } from "@/lib/services/challenges/queries";
+import { listChallengesForTableroWithMyStatus } from "@/lib/services/challenges/queries";
 import { Role } from "@/generated/prisma/enums";
 import { withBasePath, withBasePathIfNeeded } from "@/lib/base-path";
 import { challengePlayerModulePath } from "@/modules/challenges/registry";
@@ -27,6 +27,23 @@ function resolvePublicSrc(src: string) {
   return withBasePath(src);
 }
 
+function participationStatusLabel(status: string | null): { label: string; className: string } {
+  switch (status) {
+    case "PENDING_REVIEW":
+      return { label: "En revisión", className: "border-[#b45309] bg-[#ffedd5] text-[#9a3412]" };
+    case "APPROVED":
+      return { label: "Aprobado", className: "border-[#047857] bg-[#d1fae5] text-[#065f46]" };
+    case "REJECTED":
+      return { label: "Rechazado", className: "border-[#b91c1c] bg-[#fee2e2] text-[#991b1b]" };
+    case "SUBMITTED":
+      return { label: "Inscrito", className: "border-[#0369a1] bg-[#e0f2fe] text-[#0c4a6e]" };
+    case "DRAFT":
+      return { label: "Borrador", className: "border-[#64748b] bg-[#f1f5f9] text-[#334155]" };
+    default:
+      return { label: "Sin iniciar", className: "border-[#94a3b8] bg-white/90 text-[#475569]" };
+  }
+}
+
 export default async function TableroPage({
   searchParams,
 }: {
@@ -38,7 +55,7 @@ export default async function TableroPage({
   const [summary, carnet, challenges] = await Promise.all([
     getEmployeeGamificationSummary(employee.id),
     getCarnetDisplaySettings(),
-    listChallengesForTablero(),
+    listChallengesForTableroWithMyStatus(employee.id),
   ]);
 
   const environmentImgUrl = resolvePublicSrc(summary.environmentImageSrc);
@@ -225,6 +242,7 @@ export default async function TableroPage({
                   const kind = challengeTypeShortLabel(c.type);
                   const shell = challengeTypeIconShellClass(c.type);
                   const desc = c.description?.trim() || "Reto de campaña PUEAA.";
+                  const status = participationStatusLabel(c.myStatus);
                   return (
                     <Link
                       key={c.id}
@@ -238,9 +256,16 @@ export default async function TableroPage({
                         <ChallengeTypeIcon type={c.type} className="h-9 w-9" />
                       </div>
                       <div className="relative flex min-w-0 flex-1 flex-col gap-2">
-                        <span className="inline-flex w-fit rounded border-2 border-[#1a2228]/30 bg-white/90 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-[#155e75]">
-                          {kind}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex w-fit rounded border-2 border-[#1a2228]/30 bg-white/90 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-[#155e75]">
+                            {kind}
+                          </span>
+                          <span
+                            className={`inline-flex w-fit rounded border-2 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase ${status.className}`}
+                          >
+                            {status.label}
+                          </span>
+                        </div>
                         <h3 className="text-balance text-base font-bold leading-snug text-[#12181e] sm:text-lg">
                           {c.title}
                         </h3>

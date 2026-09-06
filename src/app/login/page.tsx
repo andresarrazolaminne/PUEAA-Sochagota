@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { safeInternalPath } from "@/lib/auth/safe-redirect";
 import { getCurrentEmployee } from "@/lib/auth/current-employee";
 import { loginWithCedula } from "./actions";
+import { AdminPinField } from "./AdminPinField";
 
 const ERRORS: Record<string, string> = {
   invalido: "Ingresa un número de cédula válido.",
-  no_registrado: "Cédula no registrada o cuenta inactiva. Contacta a administración.",
+  no_registrado: "No se pudo iniciar sesión. Verifica la cédula o contacta a administración.",
   rate_limit: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
-  admin_pin: "PIN de administrador incorrecto.",
+  admin_pin: "No se pudo iniciar sesión. Verifica la cédula o el PIN.",
 };
 
 export default async function LoginPage({
@@ -69,18 +70,7 @@ export default async function LoginPage({
               className="rounded-lg border-2 border-[#1e3a5f] bg-white px-3 py-2.5 font-mono text-[#132238] shadow-[inset_0_2px_4px_rgba(30,58,95,0.08)] outline-none placeholder:text-[#6b8cb8] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30"
             />
           </label>
-          <label className="flex flex-col gap-2">
-            <span className="font-mono text-[10px] uppercase tracking-widest text-[#3d5670]">
-              PIN admin <span className="normal-case tracking-normal text-[#5b7cb8]">(solo administradores)</span>
-            </span>
-            <input
-              name="adminPin"
-              type="password"
-              autoComplete="current-password"
-              placeholder="Si aplica"
-              className="rounded-lg border-2 border-[#1e3a5f] bg-white px-3 py-2.5 font-mono text-[#132238] shadow-[inset_0_2px_4px_rgba(30,58,95,0.08)] outline-none placeholder:text-[#6b8cb8] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30"
-            />
-          </label>
+          <AdminPinField />
           <button type="submit" className="game-btn-primary rounded-xl px-4 py-3 text-sm font-bold">
             Entrar al tablero
           </button>
