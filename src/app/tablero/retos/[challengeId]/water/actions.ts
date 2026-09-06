@@ -153,8 +153,7 @@ export async function submitWaterBillPeriodAction(challengeId: string, formData:
     },
   });
 
-  const isFirstEver =
-    approvedOtherCount === 0 && (!existingRow || existingRow.status !== EvidenceStatus.APPROVED);
+  const isFirstEver = approvedOtherCount === 0;
 
   const previous = await findPreviousPeriod(emp.id, challengeId, periodStart);
 
