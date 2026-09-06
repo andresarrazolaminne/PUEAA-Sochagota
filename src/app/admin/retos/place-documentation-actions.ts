@@ -190,7 +190,6 @@ export async function rejectPlaceDocumentationAction(formData: FormData) {
   }
 
   const hadDirectory = subPreview.directoryPlaceId != null;
-  const wasApproved = subPreview.status === EvidenceStatus.APPROVED;
 
   await prisma.$transaction(async (tx) => {
     const sub = await tx.placeDocumentationSubmission.findUnique({
@@ -212,21 +211,15 @@ export async function rejectPlaceDocumentationAction(formData: FormData) {
       return;
     }
 
-    if (wasApproved) {
-      await removePlaceDocumentationApprovalLedger(tx, {
-        employeeId: sub.participation.employeeId,
-        submissionId: sub.id,
-      });
-      await clawbackAwardsIfNoApprovalsRemain(tx, {
-        employeeId: sub.participation.employeeId,
-        participationId: sub.participationId,
-        kind: "place",
-        challengeId,
-      });
-    }
-
     const dirId = sub.directoryPlaceId;
 
+    // 1) Quitar puntos de ESTE envío (defensivo: también limpia huérfanos).
+    await removePlaceDocumentationApprovalLedger(tx, {
+      employeeId: sub.participation.employeeId,
+      submissionId: sub.id,
+    });
+
+    // 2) Marcar rechazado ANTES del clawback (para no contar este envío como aprobado).
     await tx.placeDocumentationSubmission.update({
       where: { id: submissionId },
       data: {
@@ -238,11 +231,21 @@ export async function rejectPlaceDocumentationAction(formData: FormData) {
       },
     });
 
+    // 3) Si ya no queda nada aprobado en la participación, quitar early bird.
+    await clawbackAwardsIfNoApprovalsRemain(tx, {
+      employeeId: sub.participation.employeeId,
+      participationId: sub.participationId,
+      kind: "place",
+      challengeId,
+    });
+
     if (dirId) {
       await tx.directoryPlace.delete({ where: { id: dirId } });
     }
   });
 
+  revalidatePath("/admin");
+  revalidatePath("/admin/revision");
   revalidatePath("/admin/retos");
   revalidatePath(`/admin/retos/${challengeId}`);
   revalidatePath(`/admin/retos/${challengeId}/revision`);

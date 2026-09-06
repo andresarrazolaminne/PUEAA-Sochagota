@@ -9,9 +9,8 @@ type Tx = Omit<
 >;
 
 /**
- * Tras rechazar (o deshacer) una aprobación: si ya no quedan envíos/periodos
- * aprobados que justifiquen el early bird (y, en residuos, el bonus de completitud),
- * quita esos puntos del ledger.
+ * Tras rechazar: cuenta solo ítems que SIGUEN APPROVED.
+ * Debe llamarse DESPUÉS de marcar el ítem actual como REJECTED.
  */
 export async function clawbackAwardsIfNoApprovalsRemain(
   tx: Tx,

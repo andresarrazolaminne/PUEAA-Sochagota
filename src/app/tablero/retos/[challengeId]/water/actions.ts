@@ -203,6 +203,7 @@ export async function submitWaterBillPeriodAction(challengeId: string, formData:
     });
 
     // Puntos solo tras aprobación admin (PENDING → no escribe ledger).
+    // Al reenviar un pendiente/rechazado también se limpia cualquier ledger huérfano.
     await removeWaterBillPeriodLedger(tx, {
       employeeId: emp.id,
       waterBillPeriodId: row.id,

@@ -14,7 +14,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "test:water-scoring": "tsx src/modules/challenges/water-bill/scoring.test.ts",
-    "test:unit": "tsx src/lib/security-and-assets.test.ts && tsx src/lib/services/challenges/early-bird.test.ts && tsx src/modules/challenges/water-bill/review-policy.test.ts && tsx src/modules/challenges/water-bill/scoring.test.ts",
+    "test:unit": "tsx src/lib/security-and-assets.test.ts && tsx src/lib/services/challenges/early-bird.test.ts && tsx src/lib/services/challenges/reject-points-policy.test.ts && tsx src/modules/challenges/water-bill/review-policy.test.ts && tsx src/modules/challenges/water-bill/scoring.test.ts",
     "test": "npm run test:unit"
   },
   "dependencies": {
