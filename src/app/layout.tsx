@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import { Geist, Geist_Mono, Press_Start_2P } from "next/font/google";
 import { SiteBrandBar } from "@/components/site/SiteBrandBar";
 import { RetroSoundscape } from "@/components/sounds/RetroSoundscape";
+import { getUiThemeForLayout } from "@/lib/services/settings/campaign-branding-bundle";
+import { themeToStyleBlock } from "@/lib/services/settings/ui-theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,17 +28,28 @@ export const metadata: Metadata = {
   description: "Plataforma de gamificación — uso eficiente del agua",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const uiTheme = await getUiThemeForLayout();
+  const themeCss =
+    uiTheme && Object.keys(uiTheme).length > 0 ? themeToStyleBlock(uiTheme) : null;
+
   return (
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} ${pressStart.variable} h-full antialiased`}
     >
       <body className="game-scanlines flex min-h-full flex-col">
+        {themeCss ? (
+          <style
+            id="pueaa-ui-theme-overrides"
+            // eslint-disable-next-line react/no-danger
+            dangerouslySetInnerHTML={{ __html: themeCss }}
+          />
+        ) : null}
         <Suspense
           fallback={
             <div

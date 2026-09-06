@@ -82,7 +82,10 @@ export default async function AdminChallengeDetailPage({
   const challenge = await getChallengeById(challengeId);
   if (!challenge) notFound();
   const waterQuery = (sp.wq ?? "").trim().toLowerCase();
-  const waterStatus = sp.wstatus === "approved" || sp.wstatus === "rejected" ? sp.wstatus : "all";
+  const waterStatus =
+    sp.wstatus === "approved" || sp.wstatus === "rejected" || sp.wstatus === "pending"
+      ? sp.wstatus
+      : "all";
   const waterSort =
     sp.wsort === "created_asc" ||
     sp.wsort === "created_desc" ||
@@ -136,6 +139,7 @@ export default async function AdminChallengeDetailPage({
           .filter((row) => {
             if (waterStatus === "approved" && row.status !== EvidenceStatus.APPROVED) return false;
             if (waterStatus === "rejected" && row.status !== EvidenceStatus.REJECTED) return false;
+            if (waterStatus === "pending" && row.status !== EvidenceStatus.PENDING) return false;
             if (!waterQuery) return true;
             const haystack = `${row.employee.fullName} ${row.employee.cedula}`.toLowerCase();
             return haystack.includes(waterQuery);
@@ -426,7 +430,8 @@ export default async function AdminChallengeDetailPage({
                 className="rounded border border-[#243d30] bg-[#111916] px-2.5 py-2 font-mono text-xs text-[#e8f5ee]"
               >
                 <option value="all">Todos</option>
-                <option value="approved">Vigentes</option>
+                <option value="pending">Pendientes</option>
+                <option value="approved">Aprobados</option>
                 <option value="rejected">Rechazados</option>
               </select>
             </label>
@@ -517,7 +522,13 @@ export default async function AdminChallengeDetailPage({
                                 <span className="mx-1 text-[#6a8c78]">·</span>
                                 <span>{formatDateTime(row.createdAt)}</span>
                                 <span className="mx-1 text-[#6a8c78]">·</span>
-                                <span>{row.status === EvidenceStatus.REJECTED ? "Rechazado" : "Vigente"}</span>
+                                <span>
+                                  {row.status === EvidenceStatus.REJECTED
+                                    ? "Rechazado"
+                                    : row.status === EvidenceStatus.PENDING
+                                      ? "Pendiente"
+                                      : "Aprobado"}
+                                </span>
                               </Link>
                             );
                           })}
@@ -547,8 +558,10 @@ export default async function AdminChallengeDetailPage({
                       <p className="font-mono text-xs">
                         {selectedWaterRow.status === EvidenceStatus.REJECTED ? (
                           <span className="text-[#f0b4b4]">Rechazado</span>
+                        ) : selectedWaterRow.status === EvidenceStatus.PENDING ? (
+                          <span className="text-[#f0d48a]">Pendiente de auditoría</span>
                         ) : (
-                          <span className="text-[#8fd4a8]">Vigente</span>
+                          <span className="text-[#8fd4a8]">Aprobado</span>
                         )}
                       </p>
                     </div>
@@ -625,7 +638,8 @@ export default async function AdminChallengeDetailPage({
                       <p className="font-mono text-[10px] uppercase tracking-wide text-[#6a9c80]">
                         Acciones de supervisión
                       </p>
-                      {selectedWaterRow.status === EvidenceStatus.APPROVED ? (
+                      {selectedWaterRow.status === EvidenceStatus.APPROVED ||
+                      selectedWaterRow.status === EvidenceStatus.PENDING ? (
                         <form action={rejectWaterBillPeriodAction} className="mt-2 flex max-w-md flex-col gap-1.5">
                           <input type="hidden" name="periodId" value={selectedWaterRow.id} />
                           <input type="hidden" name="challengeId" value={challengeId} />
@@ -643,7 +657,9 @@ export default async function AdminChallengeDetailPage({
                             Rechazar registro
                           </button>
                         </form>
-                      ) : (
+                      ) : null}
+                      {selectedWaterRow.status === EvidenceStatus.PENDING ||
+                      selectedWaterRow.status === EvidenceStatus.REJECTED ? (
                         <form action={approveWaterBillPeriodAction} className="mt-2">
                           <input type="hidden" name="periodId" value={selectedWaterRow.id} />
                           <input type="hidden" name="challengeId" value={challengeId} />
@@ -651,10 +667,12 @@ export default async function AdminChallengeDetailPage({
                             type="submit"
                             className="rounded border border-[#35664a] bg-[#142018] px-2.5 py-1.5 font-mono text-[11px] text-[#b8f0cc] hover:border-[#4a8060]"
                           >
-                            Aprobar nuevamente
+                            {selectedWaterRow.status === EvidenceStatus.PENDING
+                              ? "Aprobar y acreditar puntos"
+                              : "Aprobar nuevamente"}
                           </button>
                         </form>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ) : null}

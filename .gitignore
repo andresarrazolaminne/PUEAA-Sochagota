@@ -1,4 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+﻿# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
 /node_modules
@@ -45,9 +45,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# SQLite y datos locales
+# SQLite y datos locales / prod restaurados
 /data/*.db
+/data/*.db-*
 /data/*.db-journal
 /data/uploads/
+/data/*.local-before-restore-*
 
 /src/generated/prisma

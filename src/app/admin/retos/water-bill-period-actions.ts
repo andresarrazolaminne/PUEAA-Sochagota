@@ -9,6 +9,8 @@ import {
   replaceWaterBillPeriodLedger,
 } from "@/modules/challenges/water-bill/ledger";
 import { formatPeriodLabelEs } from "@/modules/challenges/water-bill/period";
+import { applyEarlyBirdIfEligible } from "@/lib/services/challenges/early-bird";
+import { ParticipationStatus } from "@/generated/prisma/enums";
 
 export async function rejectWaterBillPeriodAction(formData: FormData) {
   const periodId = formData.get("periodId");
@@ -36,8 +38,8 @@ export async function rejectWaterBillPeriodAction(formData: FormData) {
       return;
     }
 
-    if (row.status !== EvidenceStatus.APPROVED) {
-      throw new Error("Solo se pueden rechazar declaraciones aprobadas.");
+    if (row.status !== EvidenceStatus.APPROVED && row.status !== EvidenceStatus.PENDING) {
+      throw new Error("Estado no rechazable.");
     }
 
     await removeWaterBillPeriodLedger(tx, { employeeId: row.employeeId, waterBillPeriodId: row.id });
@@ -56,6 +58,7 @@ export async function rejectWaterBillPeriodAction(formData: FormData) {
   revalidatePath("/admin/retos");
   revalidatePath(`/admin/retos/${challengeId}`);
   revalidatePath("/admin/puntajes");
+  revalidatePath("/admin");
   revalidatePath("/tablero");
   revalidatePath(`/tablero/retos/${challengeId}/water`);
 }
@@ -84,8 +87,8 @@ export async function approveWaterBillPeriodAction(formData: FormData) {
       return;
     }
 
-    if (row.status !== EvidenceStatus.REJECTED) {
-      throw new Error("Solo se pueden aprobar declaraciones rechazadas.");
+    if (row.status !== EvidenceStatus.REJECTED && row.status !== EvidenceStatus.PENDING) {
+      throw new Error("Solo se pueden aprobar declaraciones pendientes o rechazadas.");
     }
 
     await tx.waterBillPeriod.update({
@@ -106,11 +109,32 @@ export async function approveWaterBillPeriodAction(formData: FormData) {
       improvementPoints: row.improvementPointsAwarded,
       maintenancePoints: row.maintenancePointsAwarded,
     });
+
+    const participation = await tx.challengeParticipation.findUnique({
+      where: {
+        employeeId_challengeId: {
+          employeeId: row.employeeId,
+          challengeId: row.challengeId,
+        },
+      },
+    });
+    if (participation) {
+      await tx.challengeParticipation.update({
+        where: { id: participation.id },
+        data: { status: ParticipationStatus.APPROVED },
+      });
+      await applyEarlyBirdIfEligible(tx, {
+        employeeId: row.employeeId,
+        participationId: participation.id,
+        challenge: row.challenge,
+      });
+    }
   });
 
   revalidatePath("/admin/retos");
   revalidatePath(`/admin/retos/${challengeId}`);
   revalidatePath("/admin/puntajes");
+  revalidatePath("/admin");
   revalidatePath("/tablero");
   revalidatePath(`/tablero/retos/${challengeId}/water`);
 }

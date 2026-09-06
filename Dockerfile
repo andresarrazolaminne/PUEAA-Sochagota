@@ -5,14 +5,22 @@ FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends \
+    openssl ca-certificates python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
+COPY prisma.config.ts ./
+# Schema presente para postinstall (prisma generate)
 RUN npm ci
 
 COPY . .
-RUN npx prisma generate
+ENV DATABASE_URL=file:/app/data/app.db
+ENV UPLOAD_DIR=/app/data/uploads
+RUN mkdir -p /app/data \
+  && npx prisma generate \
+  && npx prisma migrate deploy
 
 # Incluir en el build para `basePath` y URLs públicas (ej. /pueaa detrás de Nginx).
 # En raíz: docker build --build-arg NEXT_PUBLIC_BASE_PATH= .
@@ -23,7 +31,6 @@ RUN npm run build
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV DATABASE_URL=file:/app/data/app.db
 
 EXPOSE 3000
 VOLUME ["/app/data"]

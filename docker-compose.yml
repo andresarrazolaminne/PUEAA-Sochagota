@@ -16,13 +16,15 @@ services:
         # Subruta pública, ej. /pueaa → https://dominio/pueaa
         NEXT_PUBLIC_BASE_PATH: ""
     ports:
-      - "3000:3000"
+      # FOW cliente: pueaa.tod.com.co → 3102
+      - "3102:3000"
     environment:
       DATABASE_URL: file:/app/data/app.db
+      UPLOAD_DIR: /app/data/uploads
       # Debe coincidir con el build si usas subruta (mismo valor que args arriba).
       NEXT_PUBLIC_BASE_PATH: ""
+      NODE_ENV: production
     volumes:
-      - pueaa_data:/app/data
-
-volumes:
-  pueaa_data:
+      # Bind mount: facilita restaurar/backup de SQLite + uploads en el host
+      - ./data:/app/data
+    restart: unless-stopped

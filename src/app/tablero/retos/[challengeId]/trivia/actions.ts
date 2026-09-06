@@ -5,6 +5,7 @@ import { requireEmployee } from "@/lib/auth/require-employee";
 import { prisma } from "@/lib/prisma";
 import { ChallengeType, ParticipationStatus } from "@/generated/prisma/enums";
 import { LEDGER_REF_TRIVIA_CORRECT } from "@/modules/challenges/trivia/ledger";
+import { applyEarlyBirdIfEligible } from "@/lib/services/challenges/early-bird";
 
 export async function submitTriviaAnswerAction(challengeId: string, questionId: string, optionId: string) {
   const emp = await requireEmployee(`/tablero/retos/${challengeId}/trivia`);
@@ -86,6 +87,17 @@ export async function submitTriviaAnswerAction(challengeId: string, questionId: 
             refType: LEDGER_REF_TRIVIA_CORRECT,
             refId: questionId,
           },
+        });
+      }
+
+      const participation = await tx.challengeParticipation.findUnique({
+        where: { employeeId_challengeId: { employeeId: emp.id, challengeId } },
+      });
+      if (participation) {
+        await applyEarlyBirdIfEligible(tx, {
+          employeeId: emp.id,
+          participationId: participation.id,
+          challenge,
         });
       }
     }

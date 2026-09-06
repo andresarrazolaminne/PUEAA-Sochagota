@@ -9,6 +9,15 @@ export async function listChallengesForTablero(now = new Date()) {
       platformManaged: true,
       startsAt: { lte: now },
       endsAt: { gte: now },
+      /** Minijuegos / OTHER sin módulo: no saturar el tablero. */
+      type: {
+        in: [
+          ChallengeType.WATER_BILL,
+          ChallengeType.WASTE_EVIDENCE,
+          ChallengeType.PLACE_DOCUMENTATION,
+          ChallengeType.TRIVIA,
+        ],
+      },
     },
     orderBy: [{ startsAt: "desc" }],
   });
@@ -20,9 +29,9 @@ export async function listChallengesForAdmin() {
   });
 }
 
-/** Pendientes de revisión por reto (solo WASTE_EVIDENCE y PLACE_DOCUMENTATION). */
+/** Pendientes de revisión por reto (residuos, lugares y recibos de agua). */
 export async function getPendingReviewCountsByChallengeId(): Promise<Record<string, number>> {
-  const [waste, place] = await Promise.all([
+  const [waste, place, water] = await Promise.all([
     prisma.evidenceSubmission.findMany({
       where: {
         status: EvidenceStatus.PENDING,
@@ -37,6 +46,13 @@ export async function getPendingReviewCountsByChallengeId(): Promise<Record<stri
       },
       select: { participation: { select: { challengeId: true } } },
     }),
+    prisma.waterBillPeriod.findMany({
+      where: {
+        status: EvidenceStatus.PENDING,
+        challenge: { type: ChallengeType.WATER_BILL },
+      },
+      select: { challengeId: true },
+    }),
   ]);
   const out: Record<string, number> = {};
   for (const r of waste) {
@@ -47,7 +63,106 @@ export async function getPendingReviewCountsByChallengeId(): Promise<Record<stri
     const id = r.participation.challengeId;
     out[id] = (out[id] ?? 0) + 1;
   }
+  for (const r of water) {
+    out[r.challengeId] = (out[r.challengeId] ?? 0) + 1;
+  }
   return out;
+}
+
+/** Cola unificada para el inbox admin. */
+export async function getUnifiedPendingReviewInbox() {
+  const [waste, place, water] = await Promise.all([
+    prisma.evidenceSubmission.findMany({
+      where: { status: EvidenceStatus.PENDING },
+      include: {
+        participation: {
+          include: {
+            challenge: { select: { id: true, title: true, type: true } },
+            employee: { select: { id: true, fullName: true, cedula: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 40,
+    }),
+    prisma.placeDocumentationSubmission.findMany({
+      where: { status: EvidenceStatus.PENDING },
+      include: {
+        participation: {
+          include: {
+            challenge: { select: { id: true, title: true, type: true } },
+            employee: { select: { id: true, fullName: true, cedula: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 40,
+    }),
+    prisma.waterBillPeriod.findMany({
+      where: { status: EvidenceStatus.PENDING },
+      include: {
+        challenge: { select: { id: true, title: true, type: true } },
+        employee: { select: { id: true, fullName: true, cedula: true } },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 40,
+    }),
+  ]);
+
+  type Item = {
+    kind: "waste" | "place" | "water";
+    id: string;
+    challengeId: string;
+    challengeTitle: string;
+    employeeName: string;
+    employeeCedula: string;
+    createdAt: Date;
+    href: string;
+  };
+
+  const items: Item[] = [];
+  for (const r of waste) {
+    items.push({
+      kind: "waste",
+      id: r.id,
+      challengeId: r.participation.challenge.id,
+      challengeTitle: r.participation.challenge.title,
+      employeeName: r.participation.employee.fullName,
+      employeeCedula: r.participation.employee.cedula,
+      createdAt: r.createdAt,
+      href: `/admin/retos/${r.participation.challenge.id}/revision`,
+    });
+  }
+  for (const r of place) {
+    items.push({
+      kind: "place",
+      id: r.id,
+      challengeId: r.participation.challenge.id,
+      challengeTitle: r.participation.challenge.title,
+      employeeName: r.participation.employee.fullName,
+      employeeCedula: r.participation.employee.cedula,
+      createdAt: r.createdAt,
+      href: `/admin/retos/${r.participation.challenge.id}/revision`,
+    });
+  }
+  for (const r of water) {
+    items.push({
+      kind: "water",
+      id: r.id,
+      challengeId: r.challenge.id,
+      challengeTitle: r.challenge.title,
+      employeeName: r.employee.fullName,
+      employeeCedula: r.employee.cedula,
+      createdAt: r.createdAt,
+      href: `/admin/retos/${r.challenge.id}?waterPeriod=${r.id}`,
+    });
+  }
+
+  items.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  return {
+    total: items.length,
+    items: items.slice(0, 50),
+  };
 }
 
 export async function getChallengeById(id: string) {

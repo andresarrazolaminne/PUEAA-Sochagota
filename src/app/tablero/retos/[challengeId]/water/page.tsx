@@ -342,6 +342,7 @@ export default async function WaterBillChallengePage({
                 <ul className="space-y-2.5">
                   {periods.map((p) => {
                     const rejected = p.status === EvidenceStatus.REJECTED;
+                    const pending = p.status === EvidenceStatus.PENDING;
                     const under = p.computedPerCapitaM3 <= optimal;
                     return (
                       <li
@@ -349,9 +350,11 @@ export default async function WaterBillChallengePage({
                         className={`rounded-md border-2 p-3 pl-3.5 ${
                           rejected
                             ? "border-[#b91c1c] bg-[#fef2f2]"
-                            : under
-                              ? "border-[#0d9488] bg-[#ecfdf5]"
-                              : "border-[#d97706] bg-[#fffbeb]"
+                            : pending
+                              ? "border-[#d97706] bg-[#fffbeb]"
+                              : under
+                                ? "border-[#0d9488] bg-[#ecfdf5]"
+                                : "border-[#d97706] bg-[#fffbeb]"
                         }`}
                       >
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -365,6 +368,11 @@ export default async function WaterBillChallengePage({
                               {rejected ? (
                                 <span className="ml-2 inline-block rounded border border-[#b91c1c] bg-white px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-[#991b1b]">
                                   Rechazado
+                                </span>
+                              ) : null}
+                              {pending ? (
+                                <span className="ml-2 inline-block rounded border border-[#d97706] bg-white px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-[#b45309]">
+                                  Pendiente de auditoría
                                 </span>
                               ) : null}
                             </p>

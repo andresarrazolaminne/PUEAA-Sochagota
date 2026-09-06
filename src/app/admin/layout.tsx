@@ -11,6 +11,7 @@ const nav = [
   { href: "/admin/importaciones", label: "Importar" },
   { href: "/admin/carnet", label: "Carné" },
   { href: "/admin/sitio", label: "Logo sitio" },
+  { href: "/admin/branding-sync", label: "Marca" },
   { href: "/admin/herramientas-contenido", label: "Herramientas" },
 ];
 

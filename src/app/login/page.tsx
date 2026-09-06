@@ -7,6 +7,8 @@ import { loginWithCedula } from "./actions";
 const ERRORS: Record<string, string> = {
   invalido: "Ingresa un número de cédula válido.",
   no_registrado: "Cédula no registrada o cuenta inactiva. Contacta a administración.",
+  rate_limit: "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
+  admin_pin: "PIN de administrador incorrecto.",
 };
 
 export default async function LoginPage({
@@ -64,6 +66,18 @@ export default async function LoginPage({
               autoComplete="username"
               required
               placeholder="Ej. 1234567890"
+              className="rounded-lg border-2 border-[#1e3a5f] bg-white px-3 py-2.5 font-mono text-[#132238] shadow-[inset_0_2px_4px_rgba(30,58,95,0.08)] outline-none placeholder:text-[#6b8cb8] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30"
+            />
+          </label>
+          <label className="flex flex-col gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-[#3d5670]">
+              PIN admin <span className="normal-case tracking-normal text-[#5b7cb8]">(solo administradores)</span>
+            </span>
+            <input
+              name="adminPin"
+              type="password"
+              autoComplete="current-password"
+              placeholder="Si aplica"
               className="rounded-lg border-2 border-[#1e3a5f] bg-white px-3 py-2.5 font-mono text-[#132238] shadow-[inset_0_2px_4px_rgba(30,58,95,0.08)] outline-none placeholder:text-[#6b8cb8] focus:border-[#2563eb] focus:ring-2 focus:ring-[#2563eb]/30"
             />
           </label>

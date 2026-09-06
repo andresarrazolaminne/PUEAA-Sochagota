@@ -1,11 +1,16 @@
 import { prisma } from "@/lib/prisma";
+import {
+  resolveEnvironmentImageUrl,
+  resolveShieldImageUrl,
+} from "@/lib/environment/rank-assets";
 import { getTotalPointsForEmployee } from "@/lib/services/points/ledger";
 
-const DEFAULT_ENV_IMAGE = "/pixel-placeholder.svg";
-
 export async function getEmployeeGamificationSummary(employeeId: string) {
-  const totalPoints = await getTotalPointsForEmployee(employeeId);
-  const ranks = await prisma.rank.findMany({ orderBy: { sortOrder: "asc" } });
+  const [totalPoints, employee, ranks] = await Promise.all([
+    getTotalPointsForEmployee(employeeId),
+    prisma.employee.findUnique({ where: { id: employeeId }, select: { photoUrl: true } }),
+    prisma.rank.findMany({ orderBy: { sortOrder: "asc" } }),
+  ]);
 
   let rank = ranks[0];
   for (const r of ranks) {
@@ -20,11 +25,9 @@ export async function getEmployeeGamificationSummary(employeeId: string) {
   const progressPct = Math.min(100, Math.round(((totalPoints - rangeStart) / span) * 100));
 
   const totalRankLevels = ranks.length;
-  /** Nivel 1 = rango más bajo (menor `sortOrder`), N = más alto. Una estrella por nivel alcanzado. */
+  /** Nivel 1 = rango más bajo (menor `sortOrder`), N = más alto. */
   const rankLevel = idx >= 0 ? idx + 1 : 0;
-
-  const environmentImageSrc =
-    rank?.environmentImageUrl?.trim() || DEFAULT_ENV_IMAGE;
+  const sortOrder = rank?.sortOrder ?? 0;
 
   return {
     totalPoints,
@@ -32,6 +35,8 @@ export async function getEmployeeGamificationSummary(employeeId: string) {
     progressPct: Number.isFinite(progressPct) ? progressPct : 0,
     rankLevel,
     totalRankLevels,
-    environmentImageSrc,
+    environmentImageSrc: resolveEnvironmentImageUrl(rank?.environmentImageUrl, sortOrder),
+    shieldImageSrc: resolveShieldImageUrl(rank?.shieldAssetUrl, sortOrder),
+    photoUrl: employee?.photoUrl?.trim() || null,
   };
 }

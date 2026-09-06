@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/require-admin";
 import { prisma } from "@/lib/prisma";
 import { ChallengeType, EvidenceStatus } from "@/generated/prisma/enums";
 import { replaceWasteEvidenceCompletionLedger } from "@/modules/challenges/waste-evidence/ledger";
+import { applyEarlyBirdIfEligible } from "@/lib/services/challenges/early-bird";
 import {
   MIN_REJECT_REASON_LENGTH,
   parseAdminReviewRedirectTarget,
@@ -67,6 +68,11 @@ export async function approveWasteEvidenceAction(formData: FormData) {
         participationId: sub.participationId,
         challengeTitle: sub.participation.challenge.title,
         points: pts,
+      });
+      await applyEarlyBirdIfEligible(tx, {
+        employeeId: sub.participation.employeeId,
+        participationId: sub.participationId,
+        challenge: sub.participation.challenge,
       });
     }
   });

@@ -9,9 +9,14 @@ type Props = {
   priority?: boolean;
 };
 
-/** `/public` con next/image; `/api/...` y URLs externas con img. */
+/** `/public` con next/image; `/api/...` (incl. legacy `/pueaa/api/...`) y URLs externas con img. */
 export function CarnetCampaignImage({ src, alt, className, sizes, priority }: Props) {
-  const local = src.startsWith("/") && !src.startsWith("/api/");
+  const resolved = withBasePathIfNeeded(src);
+  const local =
+    resolved.startsWith("/") &&
+    !resolved.startsWith("/api/") &&
+    !resolved.startsWith("http://") &&
+    !resolved.startsWith("https://");
   const baseClass =
     "max-h-full max-w-full object-contain [image-rendering:pixelated]" +
     (className ? ` ${className}` : "");
@@ -19,7 +24,7 @@ export function CarnetCampaignImage({ src, alt, className, sizes, priority }: Pr
   if (local) {
     return (
       <Image
-        src={src}
+        src={resolved}
         alt={alt}
         width={200}
         height={200}
@@ -31,7 +36,7 @@ export function CarnetCampaignImage({ src, alt, className, sizes, priority }: Pr
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- URL configurable por admin (externa)
-    <img src={withBasePathIfNeeded(src)} alt={alt} className={baseClass} />
+    // eslint-disable-next-line @next/next/no-img-element -- URL configurable por admin (API/externa)
+    <img src={resolved} alt={alt} className={baseClass} />
   );
 }

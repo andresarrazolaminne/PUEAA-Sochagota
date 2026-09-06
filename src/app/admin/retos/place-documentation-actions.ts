@@ -9,6 +9,7 @@ import {
   ensurePlaceDocumentationApprovalLedger,
   removePlaceDocumentationApprovalLedger,
 } from "@/modules/challenges/place-documentation/ledger";
+import { applyEarlyBirdIfEligible } from "@/lib/services/challenges/early-bird";
 import {
   MIN_REJECT_REASON_LENGTH,
   parseAdminReviewRedirectTarget,
@@ -125,6 +126,11 @@ export async function approvePlaceDocumentationAction(formData: FormData) {
       submissionId: sub.id,
       challengeTitle: sub.participation.challenge.title,
       points: pts,
+    });
+    await applyEarlyBirdIfEligible(tx, {
+      employeeId: sub.participation.employeeId,
+      participationId: sub.participationId,
+      challenge: sub.participation.challenge,
     });
   });
 

@@ -5,18 +5,17 @@ import { ChallengeType, Role } from "../src/generated/prisma/enums";
 const prisma = createPrismaClient();
 
 async function main() {
-  const defaultEnvImg = "/pixel-placeholder.svg";
   const ranks = [
-    { name: "Burbuja en prácticas", sortOrder: 0, minPoints: 0, shieldAssetUrl: null as string | null, environmentImageUrl: defaultEnvImg },
-    { name: "Aprendiz del grifo", sortOrder: 1, minPoints: 75, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
-    { name: "Navegante del caudal", sortOrder: 2, minPoints: 180, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
-    { name: "Domador de válvulas", sortOrder: 3, minPoints: 380, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
-    { name: "Guardián de cuenca", sortOrder: 4, minPoints: 650, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
-    { name: "Alquimista de la gota", sortOrder: 5, minPoints: 1000, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
-    { name: "Custodio del manantial", sortOrder: 6, minPoints: 1500, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
-    { name: "Embajador PUEAA", sortOrder: 7, minPoints: 2200, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
-    { name: "Sabio del flujo eficiente", sortOrder: 8, minPoints: 3100, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
-    { name: "Leyenda del grifo dorado", sortOrder: 9, minPoints: 4500, shieldAssetUrl: null, environmentImageUrl: defaultEnvImg },
+    { name: "Burbuja en prácticas", sortOrder: 0, minPoints: 0, shieldAssetUrl: "/shields/rank-0.svg", environmentImageUrl: "/environments/rank-0.svg" },
+    { name: "Aprendiz del grifo", sortOrder: 1, minPoints: 75, shieldAssetUrl: "/shields/rank-1.svg", environmentImageUrl: "/environments/rank-1.svg" },
+    { name: "Navegante del caudal", sortOrder: 2, minPoints: 180, shieldAssetUrl: "/shields/rank-2.svg", environmentImageUrl: "/environments/rank-2.svg" },
+    { name: "Domador de válvulas", sortOrder: 3, minPoints: 380, shieldAssetUrl: "/shields/rank-3.svg", environmentImageUrl: "/environments/rank-3.svg" },
+    { name: "Guardián de cuenca", sortOrder: 4, minPoints: 650, shieldAssetUrl: "/shields/rank-4.svg", environmentImageUrl: "/environments/rank-4.svg" },
+    { name: "Alquimista de la gota", sortOrder: 5, minPoints: 1000, shieldAssetUrl: "/shields/rank-5.svg", environmentImageUrl: "/environments/rank-5.svg" },
+    { name: "Custodio del manantial", sortOrder: 6, minPoints: 1500, shieldAssetUrl: "/shields/rank-6.svg", environmentImageUrl: "/environments/rank-6.svg" },
+    { name: "Embajador PUEAA", sortOrder: 7, minPoints: 2200, shieldAssetUrl: "/shields/rank-7.svg", environmentImageUrl: "/environments/rank-7.svg" },
+    { name: "Sabio del flujo eficiente", sortOrder: 8, minPoints: 3100, shieldAssetUrl: "/shields/rank-8.svg", environmentImageUrl: "/environments/rank-8.svg" },
+    { name: "Leyenda del grifo dorado", sortOrder: 9, minPoints: 4500, shieldAssetUrl: "/shields/rank-9.svg", environmentImageUrl: "/environments/rank-9.svg" },
   ];
   for (const r of ranks) {
     await prisma.rank.upsert({

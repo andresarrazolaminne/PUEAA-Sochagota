@@ -4,9 +4,9 @@ import { revalidatePath } from "next/cache";
 import { requireEmployee } from "@/lib/auth/require-employee";
 import { prisma } from "@/lib/prisma";
 import { EvidenceStatus, ParticipationStatus } from "@/generated/prisma/enums";
-import { periodStartFromParts, formatPeriodLabelEs } from "@/modules/challenges/water-bill/period";
+import { periodStartFromParts } from "@/modules/challenges/water-bill/period";
 import { scoreWaterBillPeriod, DEFAULT_OPTIMAL_PER_CAPITA_M3 } from "@/modules/challenges/water-bill/scoring";
-import { replaceWaterBillPeriodLedger } from "@/modules/challenges/water-bill/ledger";
+import { removeWaterBillPeriodLedger } from "@/modules/challenges/water-bill/ledger";
 import { saveWaterBillEvidenceUpload } from "@/lib/uploads/water-bill-evidence";
 import {
   getWaterBillChallengeOrNull,
@@ -159,8 +159,6 @@ export async function submitWaterBillPeriodAction(challengeId: string, formData:
     isFirstEverPeriod: isFirstEver,
   });
 
-  const periodLabel = formatPeriodLabelEs(periodStart);
-
   await prisma.$transaction(async (tx) => {
     const row = await tx.waterBillPeriod.upsert({
       where: {
@@ -180,7 +178,7 @@ export async function submitWaterBillPeriodAction(challengeId: string, formData:
         evidenceFilePath: evidencePath,
         improvementPointsAwarded: scored.improvementPoints,
         maintenancePointsAwarded: scored.maintenancePoints,
-        status: EvidenceStatus.APPROVED,
+        status: EvidenceStatus.PENDING,
         reviewedById: null,
         reviewedAt: null,
         rejectReason: null,
@@ -192,20 +190,17 @@ export async function submitWaterBillPeriodAction(challengeId: string, formData:
         ...(evidencePath !== null ? { evidenceFilePath: evidencePath } : {}),
         improvementPointsAwarded: scored.improvementPoints,
         maintenancePointsAwarded: scored.maintenancePoints,
-        status: EvidenceStatus.APPROVED,
+        status: EvidenceStatus.PENDING,
         reviewedById: null,
         reviewedAt: null,
         rejectReason: null,
       },
     });
 
-    await replaceWaterBillPeriodLedger(tx, {
+    // Puntos solo tras aprobación admin (PENDING → no escribe ledger).
+    await removeWaterBillPeriodLedger(tx, {
       employeeId: emp.id,
       waterBillPeriodId: row.id,
-      challengeTitle: c.title,
-      periodLabel,
-      improvementPoints: scored.improvementPoints,
-      maintenancePoints: scored.maintenancePoints,
     });
 
     await tx.challengeParticipation.update({
@@ -214,6 +209,7 @@ export async function submitWaterBillPeriodAction(challengeId: string, formData:
         waterTotalM3: totalM3,
         householdMembers,
         computedPerCapita: perCapita,
+        status: ParticipationStatus.PENDING_REVIEW,
       },
     });
   });
@@ -221,4 +217,7 @@ export async function submitWaterBillPeriodAction(challengeId: string, formData:
   revalidatePath("/tablero");
   revalidatePath(`/tablero/retos/${challengeId}/water`);
   revalidatePath("/admin/puntajes");
+  revalidatePath("/admin/retos");
+  revalidatePath(`/admin/retos/${challengeId}`);
+  revalidatePath("/admin");
 }
