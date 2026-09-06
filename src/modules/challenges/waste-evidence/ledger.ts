@@ -42,3 +42,17 @@ export async function replaceWasteEvidenceCompletionLedger(
     },
   });
 }
+
+/** Quita puntos de completitud residuos (p. ej. al deshacer la última aprobación). */
+export async function removeWasteEvidenceCompletionLedger(
+  tx: TransactionCtx,
+  params: { employeeId: string; participationId: string },
+): Promise<void> {
+  await tx.pointLedger.deleteMany({
+    where: {
+      employeeId: params.employeeId,
+      refType: LEDGER_REF_WASTE_EVIDENCE_COMPLETION,
+      refId: params.participationId,
+    },
+  });
+}

@@ -233,7 +233,7 @@ export async function PlaceReviewSection({
                 <div key={group.employeeId} className="rounded border border-[#243d30] bg-[#111916] p-2.5">
                   <p className="text-xs text-[#c8e6d4]">
                     <Link
-                      href={`/admin/puntajes/${group.employeeId}`}
+                      href={`/admin/usuarios/${group.employeeId}/actividad`}
                       className="text-[#8fd4a8] underline-offset-2 hover:underline"
                     >
                       {group.fullName}

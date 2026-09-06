@@ -545,7 +545,12 @@ export default async function AdminChallengeDetailPage({
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#243d30] pb-3">
                       <div>
                         <p className="text-sm text-[#c8e6d4]">
-                          {selectedWaterRow.employee.fullName}
+                          <Link
+                            href={`/admin/usuarios/${selectedWaterRow.employee.id}/actividad`}
+                            className="text-[#8fd4a8] underline-offset-2 hover:underline"
+                          >
+                            {selectedWaterRow.employee.fullName}
+                          </Link>
                           <span className="ml-2 font-mono text-xs text-[#6a8c78]">
                             {selectedWaterRow.employee.cedula}
                           </span>

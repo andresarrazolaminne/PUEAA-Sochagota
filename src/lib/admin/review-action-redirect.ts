@@ -7,7 +7,8 @@ export const MIN_REJECT_REASON_LENGTH = 10;
  * Solo rutas internas de administración de retos (evita open redirect).
  */
 export function parseAdminReviewRedirectTarget(raw: unknown): string | null {
-  if (typeof raw !== "string" || !raw.startsWith("/admin/retos/")) return null;
+  if (typeof raw !== "string") return null;
+  if (!raw.startsWith("/admin/retos/") && !raw.startsWith("/admin/revision")) return null;
   if (raw.includes("..") || raw.includes("\n")) return null;
   return raw;
 }

@@ -92,6 +92,12 @@ export default async function AdminUsuarioDetallePage({
               Volver al listado
             </Link>
             <Link
+              href={`/admin/usuarios/${employee.id}/actividad`}
+              className="rounded-md border border-[#35664a] bg-[#142018] px-4 py-2.5 font-mono text-sm text-[#b8f0cc] hover:border-[#4a8060]"
+            >
+              Flujo del participante
+            </Link>
+            <Link
               href={`/admin/puntajes/${employee.id}`}
               className="rounded-md border border-[#243d30] px-4 py-2.5 font-mono text-sm text-[#8fd4a8] hover:border-[#35664a]"
             >

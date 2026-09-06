@@ -136,6 +136,7 @@ export async function getUnifiedPendingReviewInbox() {
     id: string;
     challengeId: string;
     challengeTitle: string;
+    employeeId: string;
     employeeName: string;
     employeeCedula: string;
     createdAt: Date;
@@ -150,10 +151,11 @@ export async function getUnifiedPendingReviewInbox() {
       id: r.id,
       challengeId,
       challengeTitle: r.participation.challenge.title,
+      employeeId: r.participation.employee.id,
       employeeName: r.participation.employee.fullName,
       employeeCedula: r.participation.employee.cedula,
       createdAt: r.createdAt,
-      href: `/admin/retos/${challengeId}/revision?estatus=pending`,
+      href: `/admin/retos/${challengeId}/revision?sid=${encodeURIComponent(r.id)}&sort=oldest#waste-${r.id}`,
     });
   }
   for (const r of place) {
@@ -163,6 +165,7 @@ export async function getUnifiedPendingReviewInbox() {
       id: r.id,
       challengeId,
       challengeTitle: r.participation.challenge.title,
+      employeeId: r.participation.employee.id,
       employeeName: r.participation.employee.fullName,
       employeeCedula: r.participation.employee.cedula,
       createdAt: r.createdAt,
@@ -175,6 +178,7 @@ export async function getUnifiedPendingReviewInbox() {
       id: r.id,
       challengeId: r.challenge.id,
       challengeTitle: r.challenge.title,
+      employeeId: r.employee.id,
       employeeName: r.employee.fullName,
       employeeCedula: r.employee.cedula,
       createdAt: r.createdAt,

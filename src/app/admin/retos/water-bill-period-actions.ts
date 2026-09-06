@@ -10,6 +10,7 @@ import {
 } from "@/modules/challenges/water-bill/ledger";
 import { formatPeriodLabelEs } from "@/modules/challenges/water-bill/period";
 import { applyEarlyBirdIfEligible } from "@/lib/services/challenges/early-bird";
+import { clawbackAwardsIfNoApprovalsRemain } from "@/lib/services/challenges/clawback-awards";
 import { ParticipationStatus } from "@/generated/prisma/enums";
 import { MIN_REJECT_REASON_LENGTH } from "@/lib/admin/review-action-redirect";
 
@@ -57,12 +58,44 @@ export async function rejectWaterBillPeriodAction(formData: FormData) {
         rejectReason: reason,
       },
     });
+
+    const participation = await tx.challengeParticipation.findUnique({
+      where: {
+        employeeId_challengeId: {
+          employeeId: row.employeeId,
+          challengeId: row.challengeId,
+        },
+      },
+    });
+    if (participation) {
+      await clawbackAwardsIfNoApprovalsRemain(tx, {
+        employeeId: row.employeeId,
+        participationId: participation.id,
+        kind: "water",
+        challengeId: row.challengeId,
+      });
+      const stillApproved = await tx.waterBillPeriod.count({
+        where: {
+          employeeId: row.employeeId,
+          challengeId: row.challengeId,
+          status: EvidenceStatus.APPROVED,
+        },
+      });
+      await tx.challengeParticipation.update({
+        where: { id: participation.id },
+        data: {
+          status:
+            stillApproved > 0 ? ParticipationStatus.APPROVED : ParticipationStatus.REJECTED,
+        },
+      });
+    }
   });
 
+  revalidatePath("/admin");
+  revalidatePath("/admin/revision");
   revalidatePath("/admin/retos");
   revalidatePath(`/admin/retos/${challengeId}`);
   revalidatePath("/admin/puntajes");
-  revalidatePath("/admin");
   revalidatePath("/tablero");
   revalidatePath(`/tablero/retos/${challengeId}/water`);
 }

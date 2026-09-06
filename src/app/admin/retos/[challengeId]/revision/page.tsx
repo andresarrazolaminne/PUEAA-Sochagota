@@ -32,6 +32,7 @@ export default async function AdminChallengeRevisionPage({
     pstatus?: string;
     psort?: string;
     pid?: string;
+    sid?: string;
   }>;
 }) {
   const { challengeId } = await params;
@@ -45,6 +46,7 @@ export default async function AdminChallengeRevisionPage({
   const q = sp.q ?? "";
   const dupOnly = sp.dup === "1";
   const sort: RevisionSort = sp.sort === "newest" ? "newest" : "oldest";
+  const selectedSid = typeof sp.sid === "string" ? sp.sid : "";
 
   const placePq = typeof sp.pq === "string" ? sp.pq : "";
   const placePstatus =
@@ -158,6 +160,7 @@ export default async function AdminChallengeRevisionPage({
             wastePending={wastePending}
             wasteRecent={wasteRecent}
             redirectTo={redirectTo}
+            selectedId={selectedSid}
             navLink={{ href: challengeAdminBasePath(challengeId), label: "Volver al detalle del reto" }}
           />
         </>

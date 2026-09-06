@@ -21,6 +21,8 @@ type Props = {
   redirectTo: string;
   /** Enlace opcional arriba del bloque (cola ↔ detalle). */
   navLink?: { href: string; label: string };
+  /** Ítem deep-linkeado desde la cola (`sid`). */
+  selectedId?: string;
 };
 
 function revisionCell(r: WasteEvidenceRecentRow) {
@@ -43,25 +45,42 @@ function revisionCell(r: WasteEvidenceRecentRow) {
   );
 }
 
-export function WasteReviewSection({ challengeId, basePoints, wastePending, wasteRecent, redirectTo, navLink }: Props) {
+export function WasteReviewSection({
+  challengeId,
+  basePoints,
+  wastePending,
+  wasteRecent,
+  redirectTo,
+  navLink,
+  selectedId,
+}: Props) {
   return (
     <section className="rounded-lg border border-[#1f3328] bg-[#111916] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h2 className="font-mono text-[11px] font-medium uppercase tracking-widest text-[#6a9c80]">
           Evidencias residuos / acopio — revisión
         </h2>
-        {navLink ? (
+        <div className="flex flex-wrap gap-2">
+          {navLink ? (
+            <Link
+              href={navLink.href}
+              className="shrink-0 rounded border border-[#35664a] bg-[#142018] px-3 py-1 font-mono text-[10px] text-[#b8f0cc] shadow-[0_1px_0_#050807] hover:border-[#4a8060]"
+            >
+              {navLink.label}
+            </Link>
+          ) : null}
           <Link
-            href={navLink.href}
-            className="shrink-0 rounded border border-[#35664a] bg-[#142018] px-3 py-1 font-mono text-[10px] text-[#b8f0cc] shadow-[0_1px_0_#050807] hover:border-[#4a8060]"
+            href="/admin/revision"
+            className="shrink-0 rounded border border-[#35664a] bg-[#142018] px-3 py-1 font-mono text-[10px] text-[#b8f0cc] hover:border-[#4a8060]"
           >
-            {navLink.label}
+            Cola global
           </Link>
-        ) : null}
+        </div>
       </div>
       <p className="mt-2 text-sm text-[#7aab8c]">
         Las fotos quedan pendientes hasta que apruebes o rechaces. Los puntos base ({basePoints} pts) se registran en
-        el ledger al aprobar la <strong>primera</strong> evidencia de cada persona.
+        el ledger al aprobar la <strong>primera</strong> evidencia de cada persona. Si rechazas una ya aprobada y no
+        queda ninguna otra aprobada, se retiran esos puntos (incl. early bird).
       </p>
 
       <h3 className="mt-6 font-mono text-[10px] uppercase tracking-wider text-[#5a8f72]">Pendientes</h3>
@@ -82,10 +101,16 @@ export function WasteReviewSection({ challengeId, basePoints, wastePending, wast
             </thead>
             <tbody>
               {wastePending.map((row) => (
-                <tr key={row.id} className="border-b border-[#1a2820] text-[#c8e6d4]">
+                <tr
+                  key={row.id}
+                  id={`waste-${row.id}`}
+                  className={`border-b border-[#1a2820] text-[#c8e6d4] ${
+                    selectedId === row.id ? "bg-[#142018] ring-1 ring-inset ring-[#9dffc0]/40" : ""
+                  }`}
+                >
                   <td className="py-2.5 pr-3">
                     <Link
-                      href={`/admin/puntajes/${row.employee.id}`}
+                      href={`/admin/usuarios/${row.employee.id}/actividad`}
                       className="text-[#8fd4a8] underline-offset-2 hover:underline"
                     >
                       {row.employee.fullName}
@@ -179,7 +204,8 @@ export function WasteReviewSection({ challengeId, basePoints, wastePending, wast
                 <th className="py-2 pr-3">Sitio</th>
                 <th className="py-2 pr-3">Duplicado</th>
                 <th className="py-2 pr-3">Revisión</th>
-                <th className="py-2 pr-0">Nota</th>
+                <th className="py-2 pr-3">Nota</th>
+                <th className="py-2 pr-0">Deshacer</th>
               </tr>
             </thead>
             <tbody>
@@ -192,7 +218,14 @@ export function WasteReviewSection({ challengeId, basePoints, wastePending, wast
                       <span className="text-[#f0b4b4]">Rechazada</span>
                     )}
                   </td>
-                  <td className="py-2.5 pr-3">{r.participation.employee.fullName}</td>
+                  <td className="py-2.5 pr-3">
+                    <Link
+                      href={`/admin/usuarios/${r.participation.employee.id}/actividad`}
+                      className="text-[#8fd4a8] underline-offset-2 hover:underline"
+                    >
+                      {r.participation.employee.fullName}
+                    </Link>
+                  </td>
                   <td className="py-2.5 pr-3 max-w-[12rem] text-xs">
                     {r.siteName?.trim() || r.siteAddress?.trim() ? (
                       <>
@@ -215,7 +248,44 @@ export function WasteReviewSection({ challengeId, basePoints, wastePending, wast
                     )}
                   </td>
                   <td className="py-2.5 pr-3 align-top">{revisionCell(r)}</td>
-                  <td className="py-2.5 pr-0 text-xs text-[#7aab8c]">{r.rejectReason ?? "—"}</td>
+                  <td className="py-2.5 pr-3 text-xs text-[#7aab8c]">{r.rejectReason ?? "—"}</td>
+                  <td className="py-2.5 pr-0">
+                    {r.status === EvidenceStatus.APPROVED ? (
+                      <form action={rejectWasteEvidenceAction} className="flex max-w-xs flex-col gap-1">
+                        <input type="hidden" name="submissionId" value={r.id} />
+                        <input type="hidden" name="challengeId" value={challengeId} />
+                        <input type="hidden" name="redirectTo" value={redirectTo} />
+                        <textarea
+                          name="rejectReason"
+                          rows={2}
+                          placeholder="Motivo para deshacer aprobación"
+                          className={rejectTextareaClass}
+                          required
+                          minLength={MIN_REJECT_REASON_LENGTH}
+                        />
+                        <button
+                          type="submit"
+                          className="w-fit rounded border border-[#6a3030] bg-[#1a1010] px-2 py-1 font-mono text-[10px] text-[#f0b4b4] hover:border-[#8a4040]"
+                        >
+                          Rechazar y quitar pts
+                        </button>
+                      </form>
+                    ) : r.status === EvidenceStatus.REJECTED ? (
+                      <form action={approveWasteEvidenceAction} className="inline">
+                        <input type="hidden" name="submissionId" value={r.id} />
+                        <input type="hidden" name="challengeId" value={challengeId} />
+                        <input type="hidden" name="redirectTo" value={redirectTo} />
+                        <button
+                          type="submit"
+                          className="rounded border border-[#2a4a38] bg-[#0d1512] px-2 py-1 font-mono text-[10px] text-[#8fd4a8] hover:border-[#35664a]"
+                        >
+                          Re-aprobar
+                        </button>
+                      </form>
+                    ) : (
+                      <span className="text-[#6a8c78]">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

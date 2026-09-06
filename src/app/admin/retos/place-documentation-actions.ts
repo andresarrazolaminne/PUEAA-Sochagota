@@ -10,6 +10,7 @@ import {
   removePlaceDocumentationApprovalLedger,
 } from "@/modules/challenges/place-documentation/ledger";
 import { applyEarlyBirdIfEligible } from "@/lib/services/challenges/early-bird";
+import { clawbackAwardsIfNoApprovalsRemain } from "@/lib/services/challenges/clawback-awards";
 import {
   MIN_REJECT_REASON_LENGTH,
   parseAdminReviewRedirectTarget,
@@ -215,6 +216,12 @@ export async function rejectPlaceDocumentationAction(formData: FormData) {
       await removePlaceDocumentationApprovalLedger(tx, {
         employeeId: sub.participation.employeeId,
         submissionId: sub.id,
+      });
+      await clawbackAwardsIfNoApprovalsRemain(tx, {
+        employeeId: sub.participation.employeeId,
+        participationId: sub.participationId,
+        kind: "place",
+        challengeId,
       });
     }
 
